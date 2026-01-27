@@ -47,6 +47,8 @@ void app_init_hw(void)
     printf("* Name:%s\n\r", NAME);
     printf("**************************************************\n\r");
 
+    // Initialize the buttons
+    buttons_init_gpio();
 }
 
 /*****************************************************************************/
@@ -61,9 +63,27 @@ void app_main(void)
 
     while(1)
     {
+        // Read the state of SW1
+        button_state_t sw1_state = buttons_get_state(BUTTON_SW1);
+        if (sw1_state == BUTTON_STATE_FALLING_EDGE)
+            printf("SW1 Pressed!\n\r");
+        else if (sw1_state == BUTTON_STATE_RISING_EDGE)
+            printf("SW1 Released!\n\r");
 
-        /* Sleep for 50mS */
-        cyhal_system_delay_ms(50);
+        button_state_t sw2_state = buttons_get_state(BUTTON_SW2);
+        if (sw2_state == BUTTON_STATE_FALLING_EDGE)
+            printf("SW2 Pressed!\n\r");
+        else if (sw2_state == BUTTON_STATE_RISING_EDGE)
+            printf("SW2 Released!\n\r");
+
+        button_state_t sw3_state = buttons_get_state(BUTTON_SW3);
+        if (sw3_state == BUTTON_STATE_FALLING_EDGE)
+            printf("SW3 Pressed!\n\r");
+        else if (sw3_state == BUTTON_STATE_RISING_EDGE)
+            printf("SW3 Released!\n\r");
+
+        /* Sleep for 100mS */
+        cyhal_system_delay_ms(100);
 
     }
 }
