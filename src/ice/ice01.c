@@ -49,6 +49,7 @@ void app_init_hw(void)
 
     // Initialize the buttons
     buttons_init_gpio();
+    leds_init_gpio();
 }
 
 /*****************************************************************************/
@@ -65,22 +66,32 @@ void app_main(void)
     {
         // Read the state of SW1
         button_state_t sw1_state = buttons_get_state(BUTTON_SW1);
-        if (sw1_state == BUTTON_STATE_FALLING_EDGE)
+        if (sw1_state == BUTTON_STATE_FALLING_EDGE) {
             printf("SW1 Pressed!\n\r");
-        else if (sw1_state == BUTTON_STATE_RISING_EDGE)
+            leds_set_state(RED_LED, LED_STATE_ON);
+        }
+        else if (sw1_state == BUTTON_STATE_RISING_EDGE) {
             printf("SW1 Released!\n\r");
-
+            leds_set_state(RED_LED, LED_STATE_OFF);
+        }
         button_state_t sw2_state = buttons_get_state(BUTTON_SW2);
-        if (sw2_state == BUTTON_STATE_FALLING_EDGE)
+        if (sw2_state == BUTTON_STATE_FALLING_EDGE) {
             printf("SW2 Pressed!\n\r");
-        else if (sw2_state == BUTTON_STATE_RISING_EDGE)
+            leds_set_state(GREEN_LED, LED_STATE_ON);
+        }
+        else if (sw2_state == BUTTON_STATE_RISING_EDGE) {
             printf("SW2 Released!\n\r");
-
+            leds_set_state(GREEN_LED, LED_STATE_OFF);
+        }
         button_state_t sw3_state = buttons_get_state(BUTTON_SW3);
-        if (sw3_state == BUTTON_STATE_FALLING_EDGE)
+        if (sw3_state == BUTTON_STATE_FALLING_EDGE) {
             printf("SW3 Pressed!\n\r");
-        else if (sw3_state == BUTTON_STATE_RISING_EDGE)
+            leds_set_state(BLUE_LED, LED_STATE_ON);
+        }
+        else if (sw3_state == BUTTON_STATE_RISING_EDGE) {
             printf("SW3 Released!\n\r");
+            leds_set_state(BLUE_LED, LED_STATE_OFF);
+        }
 
         /* Sleep for 100mS */
         cyhal_system_delay_ms(100);

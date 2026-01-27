@@ -16,11 +16,21 @@
 #include "cyhal_gpio.h"
 #include "ece353-pins.h"
 
+typedef enum {
+    RED_LED = 0,
+    GREEN_LED,
+    BLUE_LED
+} ece353_led_t;
+
+typedef enum {
+    LED_STATE_OFF = 0,
+    LED_STATE_ON
+} ece353_led_state_t;
+
 // Function to initialize the LEDs
-//cy_rslt_t leds_init_gpio(void);
+cy_rslt_t leds_init_gpio(void);
 
 // Function to set the state of a specific LED
-//void leds_set_state(ece353_led_t led, ece353_led_state_t state);
-
+void leds_set_state(ece353_led_t led, ece353_led_state_t state);
 
 #endif

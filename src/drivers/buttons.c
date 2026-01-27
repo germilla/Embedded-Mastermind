@@ -80,7 +80,6 @@ button_state_t buttons_get_state(ece353_button_t button) {
             break;
         default:
             return BUTTON_STATE_LOW; // Default case, should not happen
-
-        return new_state ? BUTTON_STATE_HIGH : BUTTON_STATE_LOW;
     }
+    return new_state ? BUTTON_STATE_HIGH : BUTTON_STATE_LOW;
 }
