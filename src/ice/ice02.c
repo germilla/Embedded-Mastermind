@@ -49,6 +49,12 @@ void app_init_hw(void)
     printf("* Name:%s\n\r", NAME);
     printf("**************************************************\n\r");
 
+    rslt = lcd_initialize();
+    if(rslt != CY_RSLT_SUCCESS)
+    {
+        printf("LCD Initialization Failed with Error: %d\n", rslt);
+        CY_ASSERT(0);
+    }
 }
 
 /*****************************************************************************/
@@ -61,8 +67,9 @@ void app_init_hw(void)
 void app_main(void)
 {
     
-    while(1)
-    {
+    lcd_draw_time(10,20);
+    
+    while(1) {
     }
 }
 #endif
