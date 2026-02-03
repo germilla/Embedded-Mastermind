@@ -52,6 +52,21 @@ void app_init_hw(void)
     printf("* Name:%s\n\r", NAME);
     printf("**************************************************\n\r");
 
+    // Initialize Buttons
+    rslt = buttons_init_gpio();
+    if (rslt != CY_RSLT_SUCCESS) {
+        printf("ERROR: buttons_init_gpio() failed with error code %d\r\n", rslt);
+        for (int i = 0; i < 1000000; i++);
+        CY_ASSERT(0);
+    }
+
+    // Initialize Button Timer
+    rslt = buttons_init_timer();
+    if (rslt != CY_RSLT_SUCCESS) {
+        printf("ERROR: buttons_init_timer() failed with error code %d\r\n", rslt);
+        for (int i = 0; i < 1000000; i++);
+        CY_ASSERT(0);
+    }
 }
 
 /*****************************************************************************/
@@ -63,8 +78,24 @@ void app_init_hw(void)
  */
 void app_main(void)
 {
-    while (1)
-    {
+    while (1) {
+        // Check for SW1 Press Event
+        if (ECE353_Events.sw1) {
+            printf("SW1 Pressed!\r\n");
+            ECE353_Events.sw1 = 0;
+        }
+
+        // Check for SW2 Press Event
+        if (ECE353_Events.sw2) {
+            printf("SW2 Pressed!\r\n");
+            ECE353_Events.sw2 = 0;
+        }
+
+        // Check for SW3 Press Event
+        if (ECE353_Events.sw3) {
+            printf("SW3 Pressed!\r\n");
+            ECE353_Events.sw3 = 0;
+        }
     }
 }
 #endif
