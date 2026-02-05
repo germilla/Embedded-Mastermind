@@ -9,9 +9,9 @@
  * 
  */
 
- #include "leds.h"
+#include "leds.h"
 
- cy_rslt_t leds_init_gpio(void) {
+cy_rslt_t leds_init_gpio(void) {
     cy_rslt_t result;
 
     // Initialize Red LED
@@ -33,9 +33,9 @@
     }
 
     return CY_RSLT_SUCCESS;
- }
+}
 
- void leds_set_state(ece353_led_t led, ece353_led_state_t state) {
+void leds_set_state(ece353_led_t led, ece353_led_state_t state) {
     switch (led) {
         case RED_LED:
             cyhal_gpio_write(PIN_LED_RED, state);
@@ -50,4 +50,29 @@
             // Invalid LED
             break;
     }
- }
+}
+
+cy_rslt_t leds_init_pwm(cyhal_pwm_t *pwm_obj_red, cyhal_pwm_t *pwm_obj_green, cyhal_pwm_t *pwm_obj_blue) {
+
+    cy_rslt_t result;
+
+    // Initialize PWM for Red LED
+    result = cyhal_pwm_init(pwm_obj_red, PIN_LED_RED, NULL);
+    if (result != CY_RSLT_SUCCESS) {
+        return result;
+    }
+
+    // Initialize PWM for Green LED
+    result = cyhal_pwm_init(pwm_obj_green, PIN_LED_GREEN, NULL);
+    if (result != CY_RSLT_SUCCESS) {
+        return result;
+    }
+
+    // Initialize PWM for Blue LED
+    result = cyhal_pwm_init(pwm_obj_blue, PIN_LED_BLUE, NULL);
+    if (result != CY_RSLT_SUCCESS) {
+        return result;
+    }
+
+    return CY_RSLT_SUCCESS;
+}
