@@ -30,18 +30,21 @@ char APP_DESCRIPTION[] = "ECE353: Example 04 - PWM with Interrupts";
 // Because we need to toggle the buzzer on and off, we need to set the timer to 
 // half the frequency, so we divide the tick count by 2.
 #define TIMER_FREQUENCY 100000000       // Timer frequency in Hz
-#define BUZZER_FREQUENCY_KHZ_1000 1000  // Desired buzzer frequency in Hz
-#define BUZZER_FREQUENCY_KHZ_1500 1500  // Desired buzzer frequency in Hz
-#define BUZZER_FREQUENCY_KHZ_2000 2000  // Desired buzzer frequency in Hz
-#define BUZZER_FREQUENCY_KHZ_2500 2500  // Desired buzzer frequency in Hz
-#define BUZZER_FREQUENCY_KHZ_3000 3000  // Desired buzzer frequency in Hz
+#define BUZZER_FREQUENCY_HZ_1000 1000  // Desired buzzer frequency in Hz
+#define BUZZER_FREQUENCY_HZ_1500 1500  // Desired buzzer frequency in Hz
+#define BUZZER_FREQUENCY_HZ_2000 2000  // Desired buzzer frequency in Hz
+#define BUZZER_FREQUENCY_HZ_2500 2500  // Desired buzzer frequency in Hz
+#define BUZZER_FREQUENCY_HZ_3000 3000  // Desired buzzer frequency in Hz
+#define BUZZER_FREQUENCY_HZ_3500 3500  // Desired buzzer frequency in Hz
+#define BUZZER_FREQUENCY_HZ_4000 4000  // Desired buzzer frequency in Hz
 
-#define BUZZER_TICK_COUNT_1000_KHZ (TIMER_FREQUENCY / BUZZER_FREQUENCY_KHZ_1000) / 2
-#define BUZZER_TICK_COUNT_1500_KHZ (TIMER_FREQUENCY / BUZZER_FREQUENCY_KHZ_1500) / 2
-#define BUZZER_TICK_COUNT_2000_KHZ (TIMER_FREQUENCY / BUZZER_FREQUENCY_KHZ_2000) / 2
-#define BUZZER_TICK_COUNT_2500_KHZ (TIMER_FREQUENCY / BUZZER_FREQUENCY_KHZ_2500) / 2
-#define BUZZER_TICK_COUNT_3000_KHZ (TIMER_FREQUENCY / BUZZER_FREQUENCY_KHZ_3000) / 2
-
+#define BUZZER_TICK_COUNT_1000_HZ (TIMER_FREQUENCY / BUZZER_FREQUENCY_HZ_1000) / 2
+#define BUZZER_TICK_COUNT_1500_HZ (TIMER_FREQUENCY / BUZZER_FREQUENCY_HZ_1500) / 2
+#define BUZZER_TICK_COUNT_2000_HZ (TIMER_FREQUENCY / BUZZER_FREQUENCY_HZ_2000) / 2
+#define BUZZER_TICK_COUNT_2500_HZ (TIMER_FREQUENCY / BUZZER_FREQUENCY_HZ_2500) / 2
+#define BUZZER_TICK_COUNT_3000_HZ (TIMER_FREQUENCY / BUZZER_FREQUENCY_HZ_3000) / 2
+#define BUZZER_TICK_COUNT_3500_HZ (TIMER_FREQUENCY / BUZZER_FREQUENCY_HZ_3500) / 2
+#define BUZZER_TICK_COUNT_4000_HZ (TIMER_FREQUENCY / BUZZER_FREQUENCY_HZ_4000) / 2
 
 /*****************************************************************************/
 /* Global Variables                                                          */
@@ -49,23 +52,42 @@ char APP_DESCRIPTION[] = "ECE353: Example 04 - PWM with Interrupts";
 cyhal_timer_t buzzer_timer;
 cyhal_timer_cfg_t buzzer_timer_cfg;
 
-uint32_t Buzzer_Tick_Counts[] = {
+typedef enum {
+    BUZZER_INDEX_HZ_0000 = 0,
+    BUZZER_INDEX_HZ_1000,
+    BUZZER_INDEX_HZ_1500,
+    BUZZER_INDEX_HZ_2000,
+    BUZZER_INDEX_HZ_2500,
+    BUZZER_INDEX_HZ_3000,
+    BUZZER_INDEX_HZ_3500,
+    BUZZER_INDEX_HZ_4000
+} buzzer_index_t;
+
+uint32_t BUZZER_TICKS[] = {
     0,
-    BUZZER_TICK_COUNT_1000_KHZ,
-    BUZZER_TICK_COUNT_1500_KHZ,
-    BUZZER_TICK_COUNT_2000_KHZ,
-    BUZZER_TICK_COUNT_2500_KHZ,
-    BUZZER_TICK_COUNT_3000_KHZ
+    BUZZER_TICK_COUNT_1000_HZ,
+    BUZZER_TICK_COUNT_1500_HZ,
+    BUZZER_TICK_COUNT_2000_HZ,
+    BUZZER_TICK_COUNT_2500_HZ,
+    BUZZER_TICK_COUNT_3000_HZ,
+    BUZZER_TICK_COUNT_3500_HZ,
+    BUZZER_TICK_COUNT_4000_HZ
+
 };
 
-char Buzzer_Messages[][20] = {
+char BUZZER_DBG_MESSAGES[][50] = {
     "Buzzer Off",
     "Buzzer 1.0 KHz",
     "Buzzer 1.5 KHz",
     "Buzzer 2.0 KHz",
     "Buzzer 2.5 KHz",
-    "Buzzer 3.0 KHz"
+    "Buzzer 3.0 KHz",
+    "Buzzer 3.5 KHz",
+    "Buzzer 4.0 KHz"
 };
+
+cyhal_timer_t buzzer_obj;
+cyhal_timer_cfg_t buzzer_cfg;
 
 /*****************************************************************************/
 /* Function Declarations                                                     */
@@ -74,6 +96,11 @@ char Buzzer_Messages[][20] = {
 /*****************************************************************************/
 /* Function Definitions                                                      */
 /*****************************************************************************/
+
+void buzzer_handler(void *handler_arg, cyhal_timer_event_t event)
+{
+    PORT_BUZZER->OUT_INV = MASK_BUZZER;
+}
 
 /**
  * @brief
@@ -120,6 +147,11 @@ void app_init_hw(void)
         CY_ASSERT(0);
     }
 
+    timer_init(&buzzer_obj, &buzzer_cfg, BUZZER_TICKS[BUZZER_INDEX_HZ_1000], buzzer_handler);
+
+    cyhal_timer_stop(&buzzer_obj);
+
+    cyhal_gpio_init(PIN_BUZZER, CYHAL_GPIO_DIR_OUTPUT, CYHAL_GPIO_DRIVE_STRONG, 0);
 }
 
 /*****************************************************************************/
@@ -131,8 +163,32 @@ void app_init_hw(void)
  */
 void app_main(void)
 {
+    buzzer_index_t buzzer_index = BUZZER_INDEX_HZ_1000;
     while (1)
     {
+        if (ECE353_Events.sw1)
+        {
+            ECE353_Events.sw1 = 0;
+
+            buzzer_index++;
+            
+            if (buzzer_index >= sizeof(BUZZER_TICKS) / sizeof(BUZZER_TICKS[0]))
+            {
+                buzzer_index = BUZZER_INDEX_HZ_0000;
+            }
+
+            cyhal_timer_stop(&buzzer_obj);
+            
+            // Only turn on timer for tick counts > 0
+            if (BUZZER_TICKS[buzzer_index] > 0)
+            {
+                buzzer_cfg.period = BUZZER_TICKS[buzzer_index];
+                cyhal_timer_configure(&buzzer_obj, &buzzer_cfg);
+                cyhal_timer_start(&buzzer_obj);
+            }
+
+             printf("%s\n\r", BUZZER_DBG_MESSAGES[buzzer_index]);
+        }
     }
 }
 #endif
