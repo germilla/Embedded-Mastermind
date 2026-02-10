@@ -3344,49 +3344,21 @@ const FONT_INFO Consolas_20ptFontInfo =
 	27, /*  Character height */
 	' ', /*  Start character */
 	'~', /*  End character */
-	5, /*  Character block lookup */
+	5, /*  Width of space character */
 	Consolas_20ptDescriptors, /*  Character descriptor array */
 	Consolas_20ptBitmaps, /*  Character bitmap array */
 };
 
-/**
- * @brief 
- * Draws the current time on the LCD screen.
- * 
- * @param minutes 
- * @param seconds 
- */
-void lcd_draw_time(uint8_t minutes, uint8_t seconds)
+/* Font information for Consolas 20pt */
+const FONT_INFO LARGE_NUMBERS_FontInfo =
 {
-	uint8_t digits[5] = 
-	{
-		minutes / 10, 	// minute_tens
-		minutes % 10, 	// minute_ones
-		10, 			// colon
-		seconds / 10,  	// second_tens
-		seconds % 10, 	// second_ones
-	};	
+	39, /*  Character height */
+	0, /*  Start character */
+	9, /*  End character */
+	5, /*  Width of space character */
+	FONT_CHAR_INFO_LARGE_NUMBERS, /*  Character descriptor array */
+	FONT_NUM_LARGE_BITMAPS, /*  Character bitmap array */
+};
 
-	uint16_t locations[5] =
-	{
-		MINUTES_MSD_X_LOCATION,
-		MINUTES_LSD_X_LOCATION,
-		COLON_X_LOCATION,
-		SECONDS_MSD_X_LOCATION,
-		SECONDS_LSD_X_LOCATION,
-	};
 
-	for (uint8_t i = 0; i < 5; i++)
-	{
-	    lcd_draw_image(
-    	    locations[i],
-    	    LCD_VERTICAL_CENTER,
-    	    FONT_CHAR_INFO_LARGE_NUMBERS[digits[i]].width,
-    	    FONT_CHAR_INFO_LARGE_NUMBERS[digits[i]].height,
-    	    FONT_NUM_LARGE_BITMAPS + FONT_CHAR_INFO_LARGE_NUMBERS[digits[i]].offset,
-    	    LCD_COLOR_WHITE,
-    	    LCD_COLOR_BLACK,
-    	   true 
-    	);
-	}
-}
+
