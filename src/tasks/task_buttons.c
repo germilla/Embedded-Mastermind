@@ -27,19 +27,61 @@
  void task_buttons(void *arg)
  {
     (void)arg; // Unused parameter
+    uint32_t button_count1 = 0;
+    uint32_t button_count2 = 0;
+    uint32_t button_count3 = 0;
 
+    printf("Button Task Started\r\n");
     while (1)
     {
         // Monitor button SW1
-        
+        if ((PORT_BUTTON_SW1->IN & MASK_BUTTON_PIN_SW1) == 0) {
+            button_count1++;
+
+             if (button_count1 == 2) {
+                printf("SW1 Pressed\r\n");
+
+                // Set global variable
+                xEventGroupSetBits(ECE353_RTOS_Events, ECE353_BUTTON_1_PRESSED);
+             }
+        }
+        else {
+            button_count1 = 0;
+        }
 
         // Monitor button SW2
+        if ((PORT_BUTTON_SW2->IN & MASK_BUTTON_PIN_SW2) == 0) {
+            button_count2++;
+
+             if (button_count2 == 2) {
+                printf("SW2 Pressed\r\n");
+
+                // Set global variable
+                xEventGroupSetBits(ECE353_RTOS_Events, ECE353_BUTTON_2_PRESSED);
+             }
+        }
+        else {
+            button_count2 = 0;
+        }
 
 
         // Monitor button SW3
-  
+        if ((PORT_BUTTON_SW3->IN & MASK_BUTTON_PIN_SW3) == 0) {
+            button_count3++;
+
+             if (button_count3 == 2) {
+                printf("SW3 Pressed\r\n");
+
+                // Set global variable
+                xEventGroupSetBits(ECE353_RTOS_Events, ECE353_BUTTON_3_PRESSED);
+             }
+        }
+        else {
+            button_count3 = 0;
+        }
 
         // Debounce delay
+        vTaskDelay(pdMS_TO_TICKS(30));
     }
  }
 

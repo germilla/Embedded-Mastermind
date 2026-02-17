@@ -46,7 +46,7 @@
 //#define EX02         /* Example Code LCD */
 //#define EX03         /* Example Code Timer Interrupts */
 //#define EX04         /* Example Code Timer Interrupts */
-#define EX05         /* Example Code FreeRTOS Tasks */
+//#define EX05         /* Example Code FreeRTOS Tasks */
 //#define EX06         /* Example Code FreeRTOS Tasks */
 //#define EX08         /* Example Code FreeRTOS LCD Gatekeeper */
 
@@ -54,7 +54,7 @@
 //#define ICE02       /* In-Class Exercise -- LCD 8080 Driver */
 //#define ICE03       /* In-Class Exercise -- Timer Interrupts/Debounce Buttons */
 //#define ICE04       /* In-Class Exercise -- PWM Buzzer */
-//#define ICE05       /* In-Class Exercise -- FreeRTOS Event Groups */
+#define ICE05       /* In-Class Exercise -- FreeRTOS Event Groups */
 //#define ICE06       /* In-Class Exercise -- FreeRTOS Queues */
 //#define ICE08       /* In-Class Exercise -- FreeRTOS LCD Gatekeeper */
 //#define ICE09       /* In-Class Exercise -- FreeRTOS UART Rx IRQ + Buffering  */

@@ -18,6 +18,8 @@
  #include "drivers.h"
  #include "rtos_events.h"
 
+extern EventGroupHandle_t ECE353_RTOS_Events;
+
  void task_buzzer(void *arg);
  #endif
 
