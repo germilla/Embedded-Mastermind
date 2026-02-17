@@ -28,7 +28,7 @@
 #include <stdio.h>
 
 /* Uncomment the line below to enable FreeRTOS in your applications*/
-//#define ECE353_FREERTOS
+#define ECE353_FREERTOS
 
 #if defined(ECE353_FREERTOS)
 /* FreeRTOS Includes */
@@ -46,7 +46,7 @@
 //#define EX02         /* Example Code LCD */
 //#define EX03         /* Example Code Timer Interrupts */
 //#define EX04         /* Example Code Timer Interrupts */
-//#define EX05         /* Example Code FreeRTOS Tasks */
+#define EX05         /* Example Code FreeRTOS Tasks */
 //#define EX06         /* Example Code FreeRTOS Tasks */
 //#define EX08         /* Example Code FreeRTOS LCD Gatekeeper */
 
@@ -60,7 +60,7 @@
 //#define ICE09       /* In-Class Exercise -- FreeRTOS UART Rx IRQ + Buffering  */
 //#define ICE10       /* In-Class Exercise -- FreeRTOS UART Tx IRQ + Buffering  */
 
-#define HW01
+//#define HW01
 //#define HW02
 //#define HW03
 
