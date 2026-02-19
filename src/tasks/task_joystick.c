@@ -39,18 +39,16 @@ const char * const joystick_pos_names[] = {
 {
     (void)arg; // Unused parameter
 
-    uint16_t x_value, y_value;
     while(1)
     {
         vTaskDelay(pdMS_TO_TICKS(500)); // Delay for 500 ms
 
-        x_value = joystick_read_x();
-        y_value = joystick_read_y();
 
-        float x_voltage = (x_value / 65535.0) * 3.3; // Convert ADC value to voltage
-        float y_voltage = (y_value / 65535.0) * 3.3; // Convert ADC value to voltage
+        joystick_position_t position = joystick_get_pos();
+        
+        xQueueOverwrite(Queue_Joystick, &position);
 
-        printf("Joystick ADC Values - X: %.2f, Y: %.2f\n", x_voltage, y_voltage);
+        
     }
 }
 
@@ -58,9 +56,11 @@ const char * const joystick_pos_names[] = {
 bool task_joystick_init(void)
 {
     /* Create the Queue used to send Joystick Positions*/
+    Queue_Joystick = xQueueCreate(1, sizeof(joystick_position_t));
 
     /* Create the joystick task */
-    
-    return true;
+    BaseType_t rslt = xTaskCreate(task_joystick, "Joystick Task", 512, NULL, 2, NULL);
+
+    return (rslt == pdPASS) && (Queue_Joystick != NULL);
 }
 #endif

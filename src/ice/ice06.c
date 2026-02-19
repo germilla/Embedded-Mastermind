@@ -61,10 +61,32 @@ void app_init_hw(void)
     printf("* Name:%s\n\r", NAME);
     printf("**************************************************\n\r");
 
+    /* Initialize the joystick */
+    rslt = joystick_init();
+    if(rslt != CY_RSLT_SUCCESS)
+    {
+        printf("Joystick initialization failed with error code: 0x%X\n\r", rslt);
+        CY_ASSERT(0); // Halt execution if initialization fails
+    }
+
+    task_joystick_init();
 }
 
 void task_print_directions(void *arg)
 {
+    (void)arg; // Unused parameter
+
+    joystick_position_t position;
+    while(1)
+    {
+        vTaskDelay(pdMS_TO_TICKS(100)); // Delay for 500 ms
+
+        /* Wait for a new joystick position to be sent to the queue */
+        xQueueReceive(Queue_Joystick, &position, portMAX_DELAY);
+        
+        /* Print the joystick position to the console */
+        printf("Joystick Position Changed: %s\n\r", Joystick_Pos_Strings[position]);
+    }
 
 }
 
@@ -79,7 +101,9 @@ void app_main(void)
 {
     /* Initialize joystick resources */
     
+
     /* Register the tasks with FreeRTOS*/
+    xTaskCreate(task_print_directions, "Print Directions Task", configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY + 1, NULL);
 
     /* Start the scheduler*/
     vTaskStartScheduler();
