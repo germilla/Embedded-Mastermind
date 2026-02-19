@@ -81,7 +81,7 @@ cy_rslt_t joystick_init(void)
  */
 uint16_t  joystick_read_x(void)
 {
-    /* ADD CODE */
+    return cyhal_adc_read_u16(&joystick_adc_chan_x_obj);
 
 }
 
@@ -91,7 +91,7 @@ uint16_t  joystick_read_x(void)
  */
 uint16_t  joystick_read_y(void)
 {
-    /* ADD CODE */
+    return cyhal_adc_read_u16(&joystick_adc_chan_y_obj);
 
 }
 
