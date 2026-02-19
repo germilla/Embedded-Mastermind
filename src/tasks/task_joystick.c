@@ -42,12 +42,15 @@ const char * const joystick_pos_names[] = {
     while(1)
     {
         vTaskDelay(pdMS_TO_TICKS(500)); // Delay for 500 ms
+        joystick_position_t prev_position;
 
 
         joystick_position_t position = joystick_get_pos();
         
-        xQueueOverwrite(Queue_Joystick, &position);
-
+        if (position != prev_position) {
+            xQueueOverwrite(Queue_Joystick, &position);
+            prev_position = position;
+        }
         
     }
 }

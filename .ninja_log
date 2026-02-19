@@ -2805,3 +2805,7 @@
 1585	2085	7932269750182781	build/ece353/Debug/mtb-example-ce240786-empty-app.elf	ffc3cfcad4558016
 87	750	7932271707604311	C:/Users/sidge/ece353/ece353-s26-germilla/build/Debug/local/src/ice/ice06.o	72e016d8bcfb72ca
 751	1272	7932271714250031	build/ece353/Debug/mtb-example-ce240786-empty-app.elf	ffc3cfcad4558016
+94	756	7932283144384638	C:/Users/sidge/ece353/ece353-s26-germilla/build/Debug/local/src/tasks/task_joystick.o	9324af3745db53b1
+758	1155	7932283151027180	build/ece353/Debug/mtb-example-ce240786-empty-app.elf	ffc3cfcad4558016
+93	776	7932283673684794	C:/Users/sidge/ece353/ece353-s26-germilla/build/Debug/local/src/ice/ice06.o	72e016d8bcfb72ca
+777	1319	7932283680549619	build/ece353/Debug/mtb-example-ce240786-empty-app.elf	ffc3cfcad4558016

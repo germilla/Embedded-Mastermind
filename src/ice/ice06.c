@@ -79,7 +79,6 @@ void task_print_directions(void *arg)
     joystick_position_t position;
     while(1)
     {
-        vTaskDelay(pdMS_TO_TICKS(100)); // Delay for 500 ms
 
         /* Wait for a new joystick position to be sent to the queue */
         xQueueReceive(Queue_Joystick, &position, portMAX_DELAY);
