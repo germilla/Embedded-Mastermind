@@ -10,6 +10,7 @@
  */
 
  #include "task_lcd.h"
+ #include "lcd-fonts.h"
 
 #if defined(ECE353_FREERTOS)
 
@@ -24,9 +25,83 @@ void task_lcd(void *pvParameters)
     lcd_msg_request_t lcd_request;
     lcd_msg_response_t response;
     bool status = false;
+    int location;
+    int width;
 
     while(1)
     {
+        xQueueReceive(Queue_Requests, &lcd_request, portMAX_DELAY);
+
+        switch (lcd_request.msg.command) {
+            case LCD_CMD_PRINT_SW1_COUNT:
+                printf("LCD Task: Received request to print SW1 count: %d\n", lcd_request.msg.payload.message);
+
+                // Print to screeen at (10, 50)
+                width = 10;
+                
+                for (int i = 0; i < 32; i++) {
+                    if (lcd_request.msg.payload.message[i] == '\0') {
+                        break;
+                    }
+
+                    // Convert character to ascii and get info from font info
+                    location = ((int)lcd_request.msg.payload.message[i]) - Consolas_20ptFontInfo.start_char;
+                    FONT_CHAR_INFO info = Consolas_20ptDescriptors[location];
+
+                    // Draw the character to the screen
+                    lcd_draw_image(
+                        width, 
+                        50, 
+                        info.width, 
+                        info.height, 
+                        Consolas_20ptBitmaps + info.offset, 
+                        LCD_COLOR_WHITE, 
+                        LCD_COLOR_BLACK, 
+                        false
+                    );
+
+                    // Update width for next character
+                    width += info.width;
+                }
+                break;
+            
+            case LCD_CMD_PRINT_SW2_COUNT:
+                printf("LCD Task: Received request to print SW2 count: %d\n", lcd_request.msg.payload.message);
+
+                // Print to screeen at (10, 100)
+                width = 10;
+                
+                for (int i = 0; i < 32; i++) {
+                    if (lcd_request.msg.payload.message[i] == '\0') {
+                        break;
+                    }
+
+                    // Convert character to ascii and get info from font info
+                    location = ((int)lcd_request.msg.payload.message[i]) - Consolas_20ptFontInfo.start_char;
+                    FONT_CHAR_INFO info = Consolas_20ptDescriptors[location];
+
+                    // Draw the character to the screen
+                    lcd_draw_image(
+                        width, 
+                        100, 
+                        info.width, 
+                        info.height, 
+                        Consolas_20ptBitmaps + info.offset, 
+                        LCD_COLOR_WHITE, 
+                        LCD_COLOR_BLACK, 
+                        false
+                    );
+
+                    // Update width for next character
+                    width += info.width;
+                }
+                break;
+
+            default:
+                printf("LCD Task: Received invalid command\n");
+                break;
+        }
+
     }
 }
 
