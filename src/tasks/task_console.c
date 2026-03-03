@@ -33,6 +33,52 @@ void console_event_handler(void *handler_arg, cyhal_uart_event_t event)
     if ((event & CYHAL_UART_IRQ_RX_NOT_EMPTY) == CYHAL_UART_IRQ_RX_NOT_EMPTY)
     {
         // ADD CODE 
+
+        // Read the received character from the UART
+        cyhal_uart_getc(&cy_retarget_io_uart_obj, &c, 1);
+
+        // Echo the received character back to the console
+        cyhal_uart_putc(&cy_retarget_io_uart_obj, c);
+
+        // Check if the received character is backspace or delete, remove last character from array
+        if (c == '\b' || c == 127)
+        {
+            if (produce_console_buffer->index > 0)
+            {
+                produce_console_buffer->index--;
+                produce_console_buffer->data[produce_console_buffer->index] = '\0';
+            }
+        }
+
+        // Check if the received character is a newline, if so send task notification to console task
+        else if (c == '\n' || c == '\r')
+        {
+            // Null terminate the string in the console buffer
+            produce_console_buffer->data[produce_console_buffer->index] = '\0';
+
+            // Switch the produce and consume buffers
+            console_buffer_t *temp = produce_console_buffer;
+            produce_console_buffer = consume_console_buffer;
+            consume_console_buffer = temp;
+
+            // Send a task notification to the console task to process the received string
+            vTaskNotifyGiveFromISR(TaskHandle_Console_Rx, &xHigherPriorityTaskWoken);
+            portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+
+            // Reset the index for the new produce buffer
+            produce_console_buffer->index = 0;
+        }
+        else
+        {
+            // Store the received character in the console buffer and increment the index
+            if (produce_console_buffer->index < CONSOLE_MAX_MESSAGE_LENGTH - 1)
+            {
+                produce_console_buffer->data[produce_console_buffer->index] = c;
+                produce_console_buffer->index++;
+            }
+        }
+
+        
     }
     if ((event & CYHAL_UART_IRQ_TX_EMPTY) == CYHAL_UART_IRQ_TX_EMPTY)
     {
