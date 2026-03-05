@@ -57,8 +57,8 @@
 //#define ICE05       /* In-Class Exercise -- FreeRTOS Event Groups */
 //#define ICE06       /* In-Class Exercise -- FreeRTOS Queues */
 //#define ICE08       /* In-Class Exercise -- FreeRTOS LCD Gatekeeper */
-#define ICE09       /* In-Class Exercise -- FreeRTOS UART Rx IRQ + Buffering  */
-//#define ICE10       /* In-Class Exercise -- FreeRTOS UART Tx IRQ + Buffering  */
+//#define ICE09       /* In-Class Exercise -- FreeRTOS UART Rx IRQ + Buffering  */
+#define ICE10       /* In-Class Exercise -- FreeRTOS UART Tx IRQ + Buffering  */
 
 //#define HW01
 //#define HW02
