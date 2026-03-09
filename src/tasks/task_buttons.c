@@ -40,10 +40,10 @@
             button_count1++;
 
              if (button_count1 == 2) {
-                task_console_printf("SW1 Pressed\r\n");
+                //task_console_printf("SW1 Pressed\r\n");
 
                 // Set global variable
-                //xEventGroupSetBits(ECE353_RTOS_Events, ECE353_BUTTON_1_PRESSED);
+                xEventGroupSetBits(ECE353_RTOS_Events, ECE353_BUTTON_1_PRESSED);
              }
         }
         else {
@@ -55,7 +55,7 @@
             button_count2++;
 
              if (button_count2 == 2) {
-                task_console_printf("SW2 Pressed\r\n");
+                //task_console_printf("SW2 Pressed\r\n");
 
                 // Set global variable
                 xEventGroupSetBits(ECE353_RTOS_Events, ECE353_BUTTON_2_PRESSED);
@@ -71,10 +71,10 @@
             button_count3++;
 
              if (button_count3 == 2) {
-                task_console_printf("SW3 Pressed\r\n");
+                //task_console_printf("SW3 Pressed\r\n");
 
                 // Set global variable
-                //xEventGroupSetBits(ECE353_RTOS_Events, ECE353_BUTTON_3_PRESSED);
+                xEventGroupSetBits(ECE353_RTOS_Events, ECE353_BUTTON_3_PRESSED);
              }
         }
         else {

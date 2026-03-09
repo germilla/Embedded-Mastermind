@@ -38,10 +38,12 @@ const char * const joystick_pos_names[] = {
  void task_joystick(void *arg)
 {
     (void)arg; // Unused parameter
+    
+    printf("Starting Joystick Task\n\r");
 
     while(1)
     {
-        vTaskDelay(pdMS_TO_TICKS(500)); // Delay for 500 ms
+        vTaskDelay(pdMS_TO_TICKS(30)); // Delay for 500 ms
         joystick_position_t prev_position;
 
 
