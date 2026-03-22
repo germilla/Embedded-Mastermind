@@ -26,59 +26,54 @@
 #define IPC_TX_CIRCULAR_BUFFER_SIZE 128
 #define IPC_TX_QUEUE_LENGTH 10
 
-#define INT_PRIORITY_IPC 5 // Priority for IPC tasks and events
+#define IPC_STACK_SIZE 512
+#define IPC_PRIORITY 2 // Priority for IPC tasks and events
 
 #define IPC_PACKET_START 0xAA
 
-typedef enum
-{
-    IPC_CMD_FIRE,              // User fired at opponent
-    IPC_CMD_RESULT,            // Result reported by opponent
-    IPC_CMD_GAME_CONTROL,      // Game control command (e.g., new game, player ready, etc.) 
-    IPC_CMD_ERROR,             // Error message
+/* IPC Command Message Types 
+ * The values were chosen to easily identify the commands from 
+ * the error codes, which start at 0xE0. This allows for simple validation of incoming packets.
+ * 
+ * You can expand this enum with additional command messages as needed, such as 
+ * game state updates, player actions, etc.
+ */
+typedef enum {
+    IPC_CMD_DISCOVERY = 0xC0,
+    IPC_CMD_ACTIVE_PLAYER = 0xC1,
+    IPC_CMD_INACTIVE_PLAYER = 0xC2,
+    IPC_CMD_STATUS = 0xC3,
+    IPC_CMD_ACK = 0xC4,
 } ipc_cmd_t;
 
-typedef struct {
-    uint8_t row;
-    uint8_t col;
-} ipc_fire_payload_t;
+/* IPC Error Types 
+ * The values were chosen to be in the range of 0xE0 and above to distinguish them 
+ * from valid command messages.
+ * 
+ * You can expand this enum with additional error codes as needed, such as timeouts, invalid payloads, etc.
+ */
+typedef enum {
+    IPC_STATUS_OK = 0xE0,
+    IPC_STATUS_CRC_FAIL = 0xE1,
+    IPC_STATUS_INVALID_MSG_TYPE = 0xE2,
+} ipc_status_t;
 
-typedef enum
-{
-    IPC_RESULT_MISS                 = 0xB0,
-    IPC_RESULT_HIT                  = 0xB1,
-    IPC_RESULT_SUNK                 = 0xB2,
-} ipc_result_t;
+/* IPC Payload Union 
+ *
+ * This union can be expanded to include different types of payloads for various command messages.
+ * For example, you could add a payload structure for the discovery message, or for sending game state updates.
+ */
+typedef union {
+    ipc_status_t status;
+} ipc_payload_t;
 
-// Used to indicate specific game control commands
-typedef enum
-{
-    IPC_GAME_CONTROL_NEW_GAME       = 0xC0,
-    IPC_GAME_CONTROL_PLAYER_READY   = 0xC1,
-    IPC_GAME_CONTROL_PLAYER_ALIVE   = 0xC2,
-    IPC_GAME_CONTROL_PASS_TURN      = 0xC3,
-    IPC_GAME_CONTROL_ACK            = 0xC4,
-    IPC_GAME_CONTROL_END_GAME       = 0xC5,
-} ipc_game_control_t;
-
-typedef enum
-{
-    IPC_ERROR_CHECKSUM              = 0xE0,
-    IPC_ERROR_COORD_INVALID         = 0xE1,
-    IPC_ERROR_COORD_OCCUPIED        = 0xE2,
-    IPC_ERROR_SYSTEM_FAILURE        = 0xE3,
-} ipc_error_t;
-
-typedef struct
+/* Use a Packed Structure */
+typedef struct __attribute__((packed))
 {
     uint8_t start_byte; // Should be IPC_PACKET_START
     ipc_cmd_t cmd;
-    union {
-        ipc_fire_payload_t fire;
-        ipc_result_t result;
-        ipc_game_control_t game_control;
-        ipc_error_t error;
-    } payload;
+    uint16_t sequence_num; // Incremented for each new message sent, can be used for tracking and debugging
+    ipc_payload_t payload; // Union of possible payloads, can be expanded as needed
     uint8_t checksum;
 } ipc_packet_t;
 
@@ -94,14 +89,7 @@ extern TaskHandle_t TaskHandle_IPC_Rx;
 
 /* Globals used for transmitting data */
 extern QueueHandle_t Queue_IPC_Tx;
-extern circular_buffer_t *IPC_Tx_Circular_Buffer;
 extern TaskHandle_t TaskHandle_IPC_Tx;
-
-/* Globals Debug Messages*/
-extern const char* IPC_CMD_MSG[];
-extern const char* IPC_RESULT_MSG[];
-extern const char* IPC_GAME_CONTROL_MSG[];
-extern const char* IPC_ERROR_MSG[];
 
 bool task_ipc_resources_init_rx(void);
 bool task_ipc_resources_init_tx(void);
@@ -115,10 +103,13 @@ bool task_ipc_init(void);
  */
 bool validate_packet(ipc_packet_t *packet);
 
-bool ipc_send_fire(uint8_t row, uint8_t col);
-bool ipc_send_result(ipc_result_t result);
-bool ipc_send_game_control(ipc_game_control_t control);
-bool ipc_send_error(ipc_error_t error);
+/* Helper functions for sending IPC messages */
+bool ipc_send_discovery(uint16_t sequence_num);
+bool ipc_send_active_player(uint16_t sequence_num);
+bool ipc_send_inactive_player(uint16_t sequence_num);
+bool ipc_send_status(uint16_t sequence_num, ipc_status_t status);
+bool ipc_send_ack(uint16_t sequence_num);
+bool ipc_wait_for_ack(uint32_t timeout_ms);
 
 #endif /* ECE353_FREERTOS */
 

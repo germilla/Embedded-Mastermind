@@ -59,9 +59,10 @@
 //#define ICE08       /* In-Class Exercise -- FreeRTOS LCD Gatekeeper */
 //#define ICE09       /* In-Class Exercise -- FreeRTOS UART Rx IRQ + Buffering  */
 //#define ICE10       /* In-Class Exercise -- FreeRTOS UART Tx IRQ + Buffering  */
+#define ICE11       /* In-Class Exercise -- FreeRTOS Inter-Processor Communication (IPC) */
 
 //#define HW01
-#define HW02
+//#define HW02
 //#define HW03
 
 extern char NAME[];

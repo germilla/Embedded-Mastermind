@@ -13,10 +13,10 @@
 
 #if defined(ECE353_FREERTOS)
 #include "task_ipc.h"
-#include "task_console.h"
 
 /* Globals */
 TaskHandle_t TaskHandle_IPC_Rx = NULL;
+
 
 /* Use a double buffering strategy for IPC packets */
 static volatile ipc_packet_t IPC_Rx_Buffer0;
@@ -45,7 +45,49 @@ void task_ipc_rx(void *param)
         // Wait for a FreeRTOS Task Notification
         ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
 
-        /* ADD CODE */
+        printf("Packet received with bits: 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X\n\r", 
+            ((uint8_t*)IPC_Rx_Consume_Buffer)[0], 
+            ((uint8_t*)IPC_Rx_Consume_Buffer)[1], 
+            ((uint8_t*)IPC_Rx_Consume_Buffer)[2], 
+            ((uint8_t*)IPC_Rx_Consume_Buffer)[3],
+            ((uint8_t*)IPC_Rx_Consume_Buffer)[4], 
+            ((uint8_t*)IPC_Rx_Consume_Buffer)[5]
+        );
+
+        if(validate_packet((ipc_packet_t *)IPC_Rx_Consume_Buffer) == true) 
+        {
+            /* ADD CODE */
+            // Process the received IPC packet
+            switch  (((ipc_packet_t *)IPC_Rx_Consume_Buffer)->cmd) {
+                case IPC_CMD_DISCOVERY:
+                    printf("Received Discovery Command\r\n");
+                    ipc_send_ack(((ipc_packet_t *)IPC_Rx_Consume_Buffer)->sequence_num);
+                    break;
+                case IPC_CMD_ACTIVE_PLAYER:
+                    printf("Received Active Player Command\r\n");
+                    ipc_send_ack(((ipc_packet_t *)IPC_Rx_Consume_Buffer)->sequence_num);
+                    break;
+                case IPC_CMD_INACTIVE_PLAYER:
+                    printf("Received Inactive Player Command\r\n");
+                    ipc_send_ack(((ipc_packet_t *)IPC_Rx_Consume_Buffer)->sequence_num);
+                    break;
+                case IPC_CMD_STATUS:
+                    printf("Received Status Command\r\n");
+                    ipc_send_ack(((ipc_packet_t *)IPC_Rx_Consume_Buffer)->sequence_num);
+                    break;
+                case IPC_CMD_ACK:
+                    printf("Received ACK Command\r\n");
+
+                    // Set event group bits
+                    xEventGroupSetBits(ECE353_RTOS_Events, ECE353_RTOS_EVENTS_IPC_ACK_RECEIVED);
+                    break;
+                default:
+                    printf("Received Unknown Command\r\n");
+            }
+        }
+        else {
+            printf("Invalid IPC packet received!\n\r");
+        }
     }
 }
 
@@ -55,9 +97,9 @@ bool task_ipc_resources_init_rx(void)
     BaseType_t task_ipc_rx_status = xTaskCreate(
         task_ipc_rx,                 // Function that implements the task.
         "IPC Rx Task",               // Text name for the task.
-        5*configMINIMAL_STACK_SIZE,    // Stack size in words, not bytes.
+        IPC_STACK_SIZE,             // Stack size in words, not bytes.
         NULL,                       // Parameter passed into the task.
-        tskIDLE_PRIORITY + 1,       // Priority at which the task is created.
+        IPC_PRIORITY,               // Priority at which the task is created.
         &TaskHandle_IPC_Rx          // Used to pass out the created task's handle.
     );
 
