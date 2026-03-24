@@ -38,15 +38,23 @@ static cyhal_gpio_t imu_cs_pin = NC;
  */
 bool system_sensors_get_imu(QueueHandle_t return_queue, int16_t imu_data[3])
 {
-    device_request_msg_t request;
-    device_response_msg_t response;
 
     if(return_queue == NULL || imu_data == NULL)
     {
         return false;
     }
 
-    /* ADD CODE */
+    // Take semaphore
+    xSemaphoreTake(*SPI_Semaphore, portMAX_DELAY);
+
+    // Read the IMU data
+    imu_read_registers(imu_spi_obj, imu_cs_pin, IMU_REG_OUTX_L_XL, (uint8_t *)imu_data, 6);
+
+    // Give semaphore back
+    xSemaphoreGive(*SPI_Semaphore);
+
+    // Print the data to the console for debugging
+    printf("IMU Data: X=%d, Y=%d, Z=%d\r\n", imu_data[0], imu_data[1], imu_data[2]);
 
     return true;
 }
@@ -54,20 +62,36 @@ bool system_sensors_get_imu(QueueHandle_t return_queue, int16_t imu_data[3])
  void task_imu(void *arg)
  {
     (void) arg;
-    device_request_msg_t request;
-    device_response_msg_t response;
+    int16_t accel_data[3];
+
+    xSemaphoreTake(*SPI_Semaphore, portMAX_DELAY);
 
     if(!imu_init(imu_spi_obj, imu_cs_pin))
     {
+        printf("Failed to initialize IMU\r\n");
         CY_ASSERT(0);
     }
+    else {
+        printf("IMU Initialized\r\n");
+    }
+
+    xSemaphoreGive(*SPI_Semaphore);
 
     while(1)
     {
-        /* Wait for a request to be available */
-        xQueueReceive(Queue_IMU_Request, &request, portMAX_DELAY);
+        vTaskDelay(pdMS_TO_TICKS(250));
 
-        /* ADD CODE */  
+        // Take semaphore
+        xSemaphoreTake(*SPI_Semaphore, portMAX_DELAY);
+
+        // Read the IMU data
+        imu_read_registers(imu_spi_obj, imu_cs_pin, IMU_REG_OUTX_L_XL, (uint8_t *)accel_data, 6);
+
+        // Give semaphore back
+        xSemaphoreGive(*SPI_Semaphore);
+
+        // Print the data to the console for debugging
+        printf("IMU Data: X=%d, Y=%d, Z=%d\r\n", accel_data[0], accel_data[1], accel_data[2]);
     }
 }
 

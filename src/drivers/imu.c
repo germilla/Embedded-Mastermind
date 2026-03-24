@@ -25,6 +25,18 @@ void imu_write_reg(
     uint8_t value
 )
 {
+    // Write 2 bytes: Register address and value
+    uint8_t tx_buffer[2] = {reg, value};
+    uint8_t rx_buffer[2];
+
+    // Assert the CS pin (active low)
+    cyhal_gpio_write(cs_pin, 0);
+    
+    // Transmit the register address and value
+    cyhal_spi_transfer(spi_obj, tx_buffer, 2, rx_buffer, 2, 0xFF);
+
+    // Deassert the CS pin
+    cyhal_gpio_write(cs_pin, 1);
 }
 
 /**
@@ -39,6 +51,20 @@ uint8_t imu_read_reg(
     uint8_t reg
 )
 {
+    // Write 2 bytes: Register address and value
+    uint8_t tx_buffer[2] = {reg | 0x80, 0x00}; // Set MSB for read operation
+    uint8_t rx_buffer[2];
+
+    // Assert the CS pin (active low)
+    cyhal_gpio_write(cs_pin, 0);
+    
+    // Transmit the register address and value
+    cyhal_spi_transfer(spi_obj, tx_buffer, 2, rx_buffer, 2, 0xFF);
+
+    // Deassert the CS pin
+    cyhal_gpio_write(cs_pin, 1);
+
+    return rx_buffer[1]; // Return the value read from the register
 }
 
 /**
@@ -56,6 +82,22 @@ void imu_read_registers(
     uint8_t length
 )
 {
+    uint8_t tx_buffer[length + 1];
+    uint8_t rx_buffer[length + 1];
+    tx_buffer[0] = reg | 0x80; // Set MSB for read operation
+
+    // Assert the CS pin (active low)
+    cyhal_gpio_write(cs_pin, 0);
+
+    // Transmit the register address and read the values
+    cyhal_spi_transfer(spi_obj, tx_buffer, length + 1, rx_buffer, length + 1, 0xFF);
+
+    // Deassert the CS pin
+    cyhal_gpio_write(cs_pin, 1);
+
+    // Copy the read values to the provided buffer
+    memcpy(buffer, &rx_buffer[1], length);
+
 }
 
 /**

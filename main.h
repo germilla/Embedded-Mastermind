@@ -49,6 +49,7 @@
 //#define EX05         /* Example Code FreeRTOS Tasks */
 //#define EX06         /* Example Code FreeRTOS Tasks */
 //#define EX08         /* Example Code FreeRTOS LCD Gatekeeper */
+//#define EX12        /* Example Code FreeRTOS IMU Task */
 
 //#define ICE01       /* In-Class Exercise -- Memory Mapped IO - GPIO */
 //#define ICE02       /* In-Class Exercise -- LCD 8080 Driver */
@@ -59,7 +60,8 @@
 //#define ICE08       /* In-Class Exercise -- FreeRTOS LCD Gatekeeper */
 //#define ICE09       /* In-Class Exercise -- FreeRTOS UART Rx IRQ + Buffering  */
 //#define ICE10       /* In-Class Exercise -- FreeRTOS UART Tx IRQ + Buffering  */
-#define ICE11       /* In-Class Exercise -- FreeRTOS Inter-Processor Communication (IPC) */
+//#define ICE11       /* In-Class Exercise -- FreeRTOS Inter-Processor Communication (IPC) */
+#define ICE12       /* In-Class Exercise -- FreeRTOS IMU Task */
 
 //#define HW01
 //#define HW02
