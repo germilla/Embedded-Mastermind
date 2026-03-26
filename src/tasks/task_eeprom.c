@@ -138,12 +138,6 @@ void task_eeprom(void *arg)
             response_packet.payload.eeprom = eeprom_read_byte(eeprom_spi_obj, eeprom_cs_pin, request_packet.address);
             xSemaphoreGive(*SPI_Semaphore);
             response_packet.status = DEVICE_OPERATION_STATUS_READ_SUCCESS;
-            
-            // Send the response back to the requester
-            if (request_packet.response_queue != NULL)
-            {
-                xQueueSend(request_packet.response_queue, &response_packet, portMAX_DELAY);
-            }
         }
         else if (request_packet.operation == DEVICE_OP_WRITE)
         {
@@ -151,12 +145,12 @@ void task_eeprom(void *arg)
             eeprom_write_byte(eeprom_spi_obj, eeprom_cs_pin, request_packet.address, request_packet.value);
             xSemaphoreGive(*SPI_Semaphore);
             response_packet.status = DEVICE_OPERATION_STATUS_WRITE_SUCCESS;
+        }
 
-            // Send the response back to the requester
-            if (request_packet.response_queue != NULL)
-            {
-                xQueueSend(request_packet.response_queue, &response_packet, portMAX_DELAY);
-            }
+        // Send the response back to the requester
+        if (request_packet.response_queue != NULL)
+        {
+            xQueueSend(request_packet.response_queue, &response_packet, portMAX_DELAY);
         }
     }
 }
