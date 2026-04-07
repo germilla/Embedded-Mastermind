@@ -145,7 +145,7 @@ void app_main(void)
         CY_ASSERT(0);
     }
 
-    if(!task_light_sensor_resources_init(I2C_Obj, &I2C_Semaphore))
+    if(!task_light_sensor_resources_init(&I2C_Semaphore, I2C_Obj))
     {
         printf("Light Sensor Task initialization failed!\n\r");
         for(int i = 0; i < 10000; i++);

@@ -58,6 +58,10 @@ cy_rslt_t i2c_write_u8(cyhal_i2c_t *obj, uint8_t subordinate_address, uint8_t re
 {
 	cy_rslt_t rslt = CY_RSLT_SUCCESS;
 
+	uint8_t data[2] = {reg, value};
+
+	rslt = cyhal_i2c_master_write(obj, subordinate_address, data, sizeof(data), 0, true);
+
 	return rslt;
 }
 
@@ -74,6 +78,25 @@ cy_rslt_t i2c_read_u8(cyhal_i2c_t *obj, uint8_t subordinate_address, uint8_t reg
 {
 	cy_rslt_t rslt = CY_RSLT_SUCCESS;
 
+	uint8_t rx_data = 0;
+
+	// Write the register address to the subordinate device
+	rslt = cyhal_i2c_master_write(obj, subordinate_address, &reg, sizeof(reg), 0, false);
+
+	if (rslt != CY_RSLT_SUCCESS)
+	{
+		return rslt;
+	}
+
+	rslt = cyhal_i2c_master_read(obj, subordinate_address, &rx_data, sizeof(rx_data), 0, true);
+
+	if (rslt != CY_RSLT_SUCCESS)
+	{
+		return rslt;
+	}
+
+	*value = rx_data;
+
 	return rslt;
 }
 
@@ -89,6 +112,25 @@ cy_rslt_t i2c_read_u8(cyhal_i2c_t *obj, uint8_t subordinate_address, uint8_t reg
 cy_rslt_t i2c_read_u16(cyhal_i2c_t *obj, uint8_t subordinate_address, uint8_t reg, uint16_t *value)
 {
 	cy_rslt_t rslt = CY_RSLT_SUCCESS;
+
+	uint8_t rx_data[2] = {0};
+
+	// Write the register address to the subordinate device
+	rslt = cyhal_i2c_master_write(obj, subordinate_address, &reg, sizeof(reg), 0, false);
+
+	if (rslt != CY_RSLT_SUCCESS)
+	{
+		return rslt;
+	}
+
+	rslt = cyhal_i2c_master_read(obj, subordinate_address, rx_data, sizeof(rx_data), 0, true);
+
+	if (rslt != CY_RSLT_SUCCESS)
+	{
+		return rslt;
+	}
+
+	*value = (rx_data[0] << 8) | rx_data[1];
 
 	return rslt;
 }

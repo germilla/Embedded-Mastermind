@@ -17,10 +17,10 @@
 #include "drivers.h"
 #include "devices.h"
 
-#define LM75_SUBORDINATE_ADDR                 0x0F
+#define LM75_SUBORDINATE_ADDR                 0x4F
 #define LM75_TEMP_REG						  0x00
-
-#define LM75_PRODUCT_ID                      0xA1
+#define LM75_PRODUCT_ID_REG					  0x07
+#define LM75_PRODUCT_ID                       0xA1
 
 extern QueueHandle_t Queue_Temp_Sensor_Requests;
 
