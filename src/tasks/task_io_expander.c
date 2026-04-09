@@ -43,8 +43,24 @@ bool system_sensors_io_expander_write(QueueHandle_t return_queue, uint8_t addres
 {
 	device_request_msg_t request_packet;
 
-	/* ADD CODE */	
+	// Validate the address
+	if (address != IOXP_ADDR_INPUT_PORT &&
+		address != IOXP_ADDR_OUTPUT_PORT &&
+		address != IOXP_ADDR_POLARITY &&
+		address != IOXP_ADDR_CONFIG)
+	{
+		printf("Invalid IO Expander Address: 0x%X\r\n", address);
+		return false;
+	}
 
+	// Send a request to the io expander task
+	request_packet.device = DEVICE_IO_EXP;
+	request_packet.operation = DEVICE_OP_WRITE;
+	request_packet.response_queue = return_queue;
+	request_packet.address = address;
+	request_packet.value = value;
+	xQueueSend(Queue_IO_Expander_Requests, &request_packet, portMAX_DELAY);
+	
 	return true;
 
 }
@@ -59,7 +75,34 @@ bool system_sensors_io_expander_read(QueueHandle_t return_queue, uint8_t address
 		return false;
 	}
 
-	/* ADD CODE */
+	// Validate the address
+	if (address != IOXP_ADDR_INPUT_PORT &&
+		address != IOXP_ADDR_OUTPUT_PORT &&
+		address != IOXP_ADDR_POLARITY &&
+		address != IOXP_ADDR_CONFIG)
+	{
+		printf("Invalid IO Expander Address: 0x%X\r\n", address);
+		return false;
+	}
+
+	// Send a request to the io expander task
+	request_packet.device = DEVICE_IO_EXP;
+	request_packet.operation = DEVICE_OP_READ;
+	request_packet.address = address;
+	request_packet.response_queue = return_queue;
+	xQueueSend(Queue_IO_Expander_Requests, &request_packet, portMAX_DELAY);
+
+	// Wait for the response from the io expander task
+	xQueueReceive(return_queue, &response_packet, portMAX_DELAY);
+
+	// Return the value to the caller
+	*value = response_packet.payload.io_expander;
+
+	// Check the response status
+	if (response_packet.status != DEVICE_OPERATION_STATUS_READ_SUCCESS)
+	{
+		return false;
+	}
 
 	return true;
 }
@@ -75,8 +118,6 @@ void task_io_expander(void *param)
 	device_request_msg_t request_packet;
 	device_response_msg_t response_packet;
 
-	uint32_t read_value = 0;
-
 	task_console_printf("Starting IO Expander Task\r\n");
 
 	while (1)
@@ -84,7 +125,49 @@ void task_io_expander(void *param)
 		/* Wait for a message */
 		xQueueReceive(Queue_IO_Expander_Requests, &request_packet, portMAX_DELAY);
 
-		/* ADD CODE */	
+		// Process the message
+		switch (request_packet.operation)
+		{
+			case DEVICE_OP_WRITE:
+				// Grab I2C semaphore
+				xSemaphoreTake(*I2C_Semaphore, portMAX_DELAY);
+
+				// Write the value to the specified address
+				cy_rslt_t rslt = i2c_write_u8(I2C_Obj, TCA9534_SUBORDINATE_ADDR, request_packet.address, request_packet.value);
+				if (rslt != CY_RSLT_SUCCESS)
+				{
+					task_console_printf("Error writing to IO Expander: %d\r\n", rslt);
+				}
+
+				// Release I2C semaphore
+				xSemaphoreGive(*I2C_Semaphore);
+				break;
+
+			case DEVICE_OP_READ:
+				// Grab I2C semaphore
+				xSemaphoreTake(*I2C_Semaphore, portMAX_DELAY);
+
+				// Read the value from the specified address
+				rslt = i2c_read_u8(I2C_Obj, TCA9534_SUBORDINATE_ADDR, request_packet.address, &response_packet.payload.io_expander);
+				if (rslt != CY_RSLT_SUCCESS)
+				{
+					task_console_printf("Error reading from IO Expander: %d\r\n", rslt);
+				}
+
+				// Release I2C semaphore
+				xSemaphoreGive(*I2C_Semaphore);
+
+				// Return the response to the caller
+				response_packet.device = DEVICE_IO_EXP;
+				response_packet.status = (rslt == CY_RSLT_SUCCESS) ? DEVICE_OPERATION_STATUS_READ_SUCCESS : DEVICE_OPERATION_STATUS_READ_FAILURE;
+				xQueueSend(request_packet.response_queue, &response_packet, portMAX_DELAY);
+				break;
+
+			default:
+				task_console_printf("Invalid operation for IO Expander: %d\r\n", request_packet.operation);
+				break;
+		}
+
 	}
 }
 

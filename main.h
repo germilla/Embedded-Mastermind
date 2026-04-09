@@ -63,7 +63,8 @@
 //#define ICE10       /* In-Class Exercise -- FreeRTOS UART Tx IRQ + Buffering  */
 //#define ICE11       /* In-Class Exercise -- FreeRTOS Inter-Processor Communication (IPC) */
 //#define ICE12       /* In-Class Exercise -- FreeRTOS IMU Task */
-#define ICE13      /* In-Class Exercise -- FreeRTOS I2C Master Task */
+//#define ICE13      /* In-Class Exercise -- FreeRTOS I2C Light Task */
+#define ICE14       /* In-Class Exercise -- FreeRTOS I2C IO Expander*/
 
 //#define HW01
 //#define HW02
