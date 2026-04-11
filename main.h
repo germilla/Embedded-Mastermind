@@ -64,11 +64,13 @@
 //#define ICE11       /* In-Class Exercise -- FreeRTOS Inter-Processor Communication (IPC) */
 //#define ICE12       /* In-Class Exercise -- FreeRTOS IMU Task */
 //#define ICE13      /* In-Class Exercise -- FreeRTOS I2C Light Task */
-#define ICE14       /* In-Class Exercise -- FreeRTOS I2C IO Expander*/
+//#define ICE14       /* In-Class Exercise -- FreeRTOS I2C IO Expander*/
 
 //#define HW01
 //#define HW02
 //#define HW03
+#define HW04
+
 
 extern char NAME[];
 extern char APP_DESCRIPTION[];
