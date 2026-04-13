@@ -27,6 +27,8 @@
 #define TASK_CAP_TOUCH_STACK_SIZE    (configMINIMAL_STACK_SIZE*5)
 #define TASK_CAP_TOUCH_PRIORITY      (tskIDLE_PRIORITY + 1U)
 
+extern QueueHandle_t Queue_Request_Cap_Touch;
+
 /* Function used to initialize resources for the IMU task */
 bool task_cap_touch_resources_init(
     QueueHandle_t queue_request,

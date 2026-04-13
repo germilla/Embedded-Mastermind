@@ -25,5 +25,7 @@
  #include "lcd-io.h"
  #include "lcd-fonts.h"
  #include "timer.h"
+ #include "cap_touch.h"
+ #include "spi.h"
 
  #endif
