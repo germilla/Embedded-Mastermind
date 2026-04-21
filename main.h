@@ -70,7 +70,7 @@
 //#define HW02
 //#define HW03
 //#define HW04
-#define hw05         /* Homework 05 - FreeRTOS Master Mind*/
+#define HW05         /* Homework 05 - FreeRTOS Master Mind*/
 
 
 extern char NAME[];
