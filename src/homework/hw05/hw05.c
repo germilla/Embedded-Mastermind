@@ -127,12 +127,39 @@ uint32_t number_select(void) {
             xQueueReceive(Response_Queue, &response, portMAX_DELAY);
         } while (response.status == DEVICE_OPERATION_STATUS_READ_FAILURE);
         
-        // Parse the response and check if a button is being touched
+        // Parse the response and determine which tile was touched
+        uint16_t touch_x = response.payload.cap_touch[0];
+        uint16_t touch_y = response.payload.cap_touch[1];
 
-        // TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO
+        // Determine which row and column the touch falls in
+        int touched_row = -1;
+        int touched_col = -1;
 
+        // Check rows 1 and 2 (the number input rows)
+        for (int row = 1; row < 3; row++) {
+            int top_y = lcd_tile_top_y(row);
+            if (touch_y >= top_y && touch_y < top_y + TILE_H) {
+                touched_row = row;
+                break;
+            }
+        }
 
-        selected_numbers[number_selected] = 3; 
+        // Check columns 0-3
+        for (int col = 0; col < 4; col++) {
+            int left_x = lcd_tile_left_x(col);
+            if (touch_x >= left_x && touch_x < left_x + TILE_W) {
+                touched_col = col;
+                break;
+            }
+        }
+
+        // If the touch was not on a valid tile, try again
+        if (touched_row == -1 || touched_col == -1) {
+            continue;
+        }
+
+        // Convert row/col to tile number: row 1 has 0-3, row 2 has 4-7
+        selected_numbers[number_selected] = touched_col + (touched_row - 1) * 4;
 
         // Update the top to show the selected number
         lcd_request.msg.command = LCD_CMD_DRAW_TILE;
@@ -142,13 +169,15 @@ uint32_t number_select(void) {
         lcd_request.msg.payload.tile.color_fg = LCD_COLOR_RED;
         xQueueSend(xQueue_Request_LCD, &lcd_request, portMAX_DELAY);
         
-        // Highlight the next tile to be selected
-        lcd_request.msg.command = LCD_CMD_DRAW_TILE_INVERTED;
-        lcd_request.msg.payload.tile.col = number_selected + 1;
-        lcd_request.msg.payload.tile.number = 0;
-        lcd_request.msg.payload.tile.row = LCD_TILE_ROW_CYPHER;
-        lcd_request.msg.payload.tile.color_fg = LCD_COLOR_RED;
-        xQueueSend(xQueue_Request_LCD, &lcd_request, portMAX_DELAY);
+        // Highlight the next tile to be selected (only if there is one)
+        if (number_selected + 1 < 4) {
+            lcd_request.msg.command = LCD_CMD_DRAW_TILE_INVERTED;
+            lcd_request.msg.payload.tile.col = number_selected + 1;
+            lcd_request.msg.payload.tile.number = 0;
+            lcd_request.msg.payload.tile.row = LCD_TILE_ROW_CYPHER;
+            lcd_request.msg.payload.tile.color_fg = LCD_COLOR_RED;
+            xQueueSend(xQueue_Request_LCD, &lcd_request, portMAX_DELAY);
+        }
 
         // Highlight the current tile that is being touched. Tile till touch is released later
         lcd_request.msg.command = LCD_CMD_DRAW_TILE_INVERTED;
