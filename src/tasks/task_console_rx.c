@@ -27,7 +27,7 @@
  * The supported commands will be "RED_ON" and "RED_OFF" to control the red LED.
  */
 
-/* ADD CODE */
+
 /* Global Variables */
 console_buffer_t console_buffer1;
 console_buffer_t console_buffer2;
@@ -59,7 +59,7 @@ void task_console_rx(void *param)
 
     while (1)
     {
-        /* ADD CODE */
+        
         // Wait for a task notification from the ISR
         ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
 
@@ -156,7 +156,7 @@ bool task_console_resources_init_rx(void)
 {
     BaseType_t rslt;
 
-    /* ADD CODE */
+    
     // Allocate an array of dta from the heap for each console buffer
     console_buffer1.data = (char *)pvPortMalloc(CONSOLE_MAX_MESSAGE_LENGTH);
     console_buffer2.data = (char *)pvPortMalloc(CONSOLE_MAX_MESSAGE_LENGTH);

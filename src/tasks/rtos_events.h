@@ -28,6 +28,7 @@ extern EventGroupHandle_t ECE353_RTOS_Events;
 #define ECE353_BUTTON_3_PRESSED    ( 1 << 2 ) // Event 3
 
 #define ECE353_RTOS_EVENTS_IPC_ACK_RECEIVED    ( 1 << 3 ) // Event 4
+#define ECE353_RTOS_EVENTS_IPC_NUM_RECEIVED    ( 1 << 4 ) // Event 5
 
 #endif // ECE353_FREERTOS
 

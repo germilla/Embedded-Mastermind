@@ -45,18 +45,16 @@ void task_ipc_rx(void *param)
         // Wait for a FreeRTOS Task Notification
         ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
 
-        printf("Packet received with bits: 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X\n\r", 
-            ((uint8_t*)IPC_Rx_Consume_Buffer)[0], 
-            ((uint8_t*)IPC_Rx_Consume_Buffer)[1], 
-            ((uint8_t*)IPC_Rx_Consume_Buffer)[2], 
-            ((uint8_t*)IPC_Rx_Consume_Buffer)[3],
-            ((uint8_t*)IPC_Rx_Consume_Buffer)[4], 
-            ((uint8_t*)IPC_Rx_Consume_Buffer)[5]
-        );
+        printf("Packet received with bits:");
+        for(int i = 0; i < sizeof(ipc_packet_t); i++)
+        {
+            printf(" 0x%02X", ((uint8_t*)IPC_Rx_Consume_Buffer)[i]);
+        }
+        printf("\n\r");
 
         if(validate_packet((ipc_packet_t *)IPC_Rx_Consume_Buffer) == true) 
         {
-            /* ADD CODE */
+            
             // Process the received IPC packet
             switch  (((ipc_packet_t *)IPC_Rx_Consume_Buffer)->cmd) {
                 case IPC_CMD_DISCOVERY:
@@ -80,6 +78,17 @@ void task_ipc_rx(void *param)
 
                     // Set event group bits
                     xEventGroupSetBits(ECE353_RTOS_Events, ECE353_RTOS_EVENTS_IPC_ACK_RECEIVED);
+                    break;
+                case IPC_CMD_NUMBER:
+                    printf("Received Number Command: 0x%08lX\r\n", (unsigned long)((ipc_packet_t *)IPC_Rx_Consume_Buffer)->payload.number);
+
+                    // Set event group bits
+                    xEventGroupSetBits(ECE353_RTOS_Events, ECE353_RTOS_EVENTS_IPC_NUM_RECEIVED);
+
+                    // Store the received number in a global variable for use in the system control task
+                    Sent_Code = ((ipc_packet_t *)IPC_Rx_Consume_Buffer)->payload.number;
+
+                    ipc_send_ack(((ipc_packet_t *)IPC_Rx_Consume_Buffer)->sequence_num);
                     break;
                 default:
                     printf("Received Unknown Command\r\n");

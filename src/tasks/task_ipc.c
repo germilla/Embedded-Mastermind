@@ -32,6 +32,7 @@ cyhal_uart_cfg_t IPC_Uart_Config =
 
 uint32_t IPC_Actual_Baud;
 
+uint16_t Sent_Code = -1;
 
 /**
  * @brief 
@@ -88,8 +89,24 @@ bool validate_packet(ipc_packet_t *packet)
 /********************************************************************/
 /* Helper Functions for sending IPC packets                         */
 /********************************************************************/
-/* ADD CODE */
+
 /* Look at task_ipc.h to find the list of helper functions */
+bool ipc_send_number(uint16_t sequence_num, uint16_t number) {
+    ipc_packet_t packet = {
+        .start_byte = IPC_PACKET_START,
+        .cmd = IPC_CMD_NUMBER,
+        .sequence_num = sequence_num,
+        .payload.number = number
+    };
+
+    packet.checksum = calculate_checksum(&packet);
+
+    if(xQueueSend(Queue_IPC_Tx, &packet, pdMS_TO_TICKS(100)) != pdTRUE)
+        return false;
+
+    printf("Number sent with sequence number: %d value: 0x%08lX\n\r", sequence_num, (unsigned long)number);
+    return true;
+}
 
 bool ipc_send_active_player(uint16_t sequence_num) {
     ipc_packet_t packet = {
@@ -203,7 +220,7 @@ void ipc_event_handler(void *handler_arg, cyhal_uart_event_t event)
 {
     (void)handler_arg;
     BaseType_t xHigherPriorityTaskWoken = pdFALSE;
-    char c;
+    uint8_t c;
     static uint8_t raw_data_index = 0;
 
     if ((event & CYHAL_UART_IRQ_RX_NOT_EMPTY) == CYHAL_UART_IRQ_RX_NOT_EMPTY)
@@ -211,7 +228,7 @@ void ipc_event_handler(void *handler_arg, cyhal_uart_event_t event)
         // Read the received character
         cyhal_uart_getc(&IPC_Uart_Obj, &c, 0);
 
-        /* ADD CODE */
+        
 
         /* You will need to determine when a new packet is starting and then store the packet
          * byte by byte into the produce buffer.  Once all the bytes have been received, 

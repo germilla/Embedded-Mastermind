@@ -72,7 +72,7 @@ static uint8_t LM75_get_product_id(void)
 	uint8_t prod_id = 0;
 	cy_rslt_t rslt = CY_RSLT_SUCCESS;
 
-	/* ADD CODE */
+	
 	rslt = i2c_read_u8(I2C_Obj, LM75_SUBORDINATE_ADDR, LM75_PRODUCT_ID_REG, &prod_id);
 
 	if (rslt != CY_RSLT_SUCCESS)
@@ -140,7 +140,7 @@ void task_temp_sensor(void *param)
 	
 	task_console_printf("Starting Temp Sensor Task\r\n");
 	
-	/* ADD CODE */
+	
 
 	// Grab I2C semaphore
 	xSemaphoreTake(*I2C_Semaphore, portMAX_DELAY);
@@ -166,7 +166,7 @@ void task_temp_sensor(void *param)
 		/* Wait for a message */
 		xQueueReceive(Queue_Temp_Sensor_Requests, &request_packet, portMAX_DELAY);
 	
-		/* ADD CODE */
+		
 
 		// Grab I2C semaphore
 		xSemaphoreTake(*I2C_Semaphore, portMAX_DELAY);

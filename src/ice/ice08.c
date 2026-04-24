@@ -26,7 +26,7 @@ char APP_DESCRIPTION[] = "ECE353: ICE 08 - FreeRTOS LCD Gatekeeper";
 /*****************************************************************************/
 /* Global Variables                                                          */
 /*****************************************************************************/
-/* ADD CODE */
+
 /* FreeRTOS Queue for LCD messages */
 QueueHandle_t Queue_LCD_Request = NULL;
 EventGroupHandle_t ECE353_RTOS_Events;

@@ -44,6 +44,7 @@ typedef enum {
     IPC_CMD_INACTIVE_PLAYER = 0xC2,
     IPC_CMD_STATUS = 0xC3,
     IPC_CMD_ACK = 0xC4,
+    IPC_CMD_NUMBER = 0xC5,
 } ipc_cmd_t;
 
 /* IPC Error Types 
@@ -65,6 +66,7 @@ typedef enum {
  */
 typedef union {
     ipc_status_t status;
+    uint32_t number;
 } ipc_payload_t;
 
 /* Use a Packed Structure */
@@ -91,6 +93,9 @@ extern TaskHandle_t TaskHandle_IPC_Rx;
 extern QueueHandle_t Queue_IPC_Tx;
 extern TaskHandle_t TaskHandle_IPC_Tx;
 
+// Function specific globals
+extern uint16_t Sent_Code;
+
 bool task_ipc_resources_init_rx(void);
 bool task_ipc_resources_init_tx(void);
 bool task_ipc_init(void);
@@ -105,6 +110,7 @@ bool validate_packet(ipc_packet_t *packet);
 
 /* Helper functions for sending IPC messages */
 bool ipc_send_discovery(uint16_t sequence_num);
+bool ipc_send_number(uint16_t sequence_num, uint16_t number);
 bool ipc_send_active_player(uint16_t sequence_num);
 bool ipc_send_inactive_player(uint16_t sequence_num);
 bool ipc_send_status(uint16_t sequence_num, ipc_status_t status);

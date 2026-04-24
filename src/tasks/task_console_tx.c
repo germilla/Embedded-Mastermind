@@ -135,12 +135,12 @@ void task_console_printf(char *str_ptr, ...)
 
         va_end(args);
 
-        /* ADD CODE */
+        
         /* Initialize the console buffer */
         console_buffer.index = (uint32_t)strlen(message_buffer);
         console_buffer.data = NULL;
 
-        /* ADD CODE */
+        
         /* The receiver task is responsible to free the memory from here on */
         console_buffer.data = message_buffer;
 

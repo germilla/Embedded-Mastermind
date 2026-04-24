@@ -36,16 +36,23 @@ EventGroupHandle_t ECE353_RTOS_Events;
 QueueHandle_t xQueue_Request_LCD;
 QueueHandle_t Response_Queue;
 
+bool Cypher_Chosen = 0;
+int guess_number = 1;
+
+// Store the code that the other player sent us for use in the game
+uint16_t cypher = 0;
+
 /*****************************************************************************/
 /* Function Definitions                                                      */
 /*****************************************************************************/
 
 /* This function will be used to discover other board. This function should not
- * return until the discovery is complete.  The discovery is complete when we receive
- * a discovery message from the other board OR we send a discovery message that is 
- * Acked by the other board */
+ * return until the discovery is complete.  The discovery is complete when we
+ * receive a discovery message from the other board OR we send a discovery
+ * message that is Acked by the other board */
 void discover_board(uint16_t *sequence_num) {
   bool discovery_complete = false;
+
   while (discovery_complete == false) {
     ipc_send_discovery(*sequence_num);
     if (ipc_wait_for_ack(100)) {
@@ -59,15 +66,26 @@ void discover_board(uint16_t *sequence_num) {
   }
 }
 
+/* Helper method to print a message to the text area at the top of the LCD */
+void print_top_lcd(const char *message) {
+  lcd_msg_request_t lcd_request;
+  lcd_request.msg.command = LCD_CMD_PRINT_MESSAGE;
+  lcd_request.return_queue = NULL;
+    snprintf(lcd_request.msg.payload.message, 32, "%-25s", message);
+  xQueueSend(xQueue_Request_LCD, &lcd_request, portMAX_DELAY);
+}
+
 /* At start of game show the numbers on the screen and allow user to chose 4 numbers, then returns those 4 numbers */
-uint32_t number_select(void) {
+uint16_t number_select(void) {
     /* Allocate a lcd_msg_request_t variable */
     lcd_msg_request_t lcd_request;
+    char select_prompt[32];
+    snprintf(select_prompt, 32, (!Cypher_Chosen) ? "Select Your Cypher!     " : "Select Your Guess #%d!    ", guess_number);
 
     /* Write a message to the user in the Text Area of the screen*/
     lcd_request.msg.command = LCD_CMD_PRINT_MESSAGE;
     lcd_request.return_queue = NULL;
-    snprintf(lcd_request.msg.payload.message, 32, "Select Your Cypher!");
+    snprintf(lcd_request.msg.payload.message, 32, (!Cypher_Chosen) ? "Select Your Cypher!     " : "Select Your Guess #%d!    ", guess_number);
     xQueueSend(xQueue_Request_LCD, &lcd_request, portMAX_DELAY);
 
     /* Draw 4 blank tiles for the secret code */
@@ -107,115 +125,211 @@ uint32_t number_select(void) {
     xQueueSend(xQueue_Request_LCD, &lcd_request, portMAX_DELAY);
 
     // Wait for 4 button from the capactive touch sensor and update the cypher tiles accordingly
-    int* selected_numbers = malloc(4 * sizeof(int));
+    int selected_numbers[4] = {0};
     int number_selected = 0;
     device_response_msg_t response;
     device_request_msg_t request;
 
-    // Wait for the user to select 4 numbers
-    while (number_selected < 4) {
-        // Wait for user to select a number
-        vTaskDelay(100);
+    while (1)
+    {
+        while (number_selected < 4) {
+            EventBits_t button_events;
 
-        // Parse request and setup queue for response
-        request.response_queue = Response_Queue;
-        parse_cli_data("CAP_TOUCH", &request);
-        
-        // Send the request to the capacitive touch task and wait for a touch
-        do {
+            // Wait for user to select a number
+            vTaskDelay(100);
+
+            // Process SW1/SW2 while selecting digits.
+            button_events = xEventGroupWaitBits(ECE353_RTOS_Events,
+                                                ECE353_BUTTON_1_PRESSED | ECE353_BUTTON_2_PRESSED,
+                                                pdTRUE,
+                                                pdFALSE,
+                                                0);
+
+            if (button_events & ECE353_BUTTON_2_PRESSED)
+            {
+                if (number_selected > 0)
+                {
+                    // Clear the currently highlighted cursor tile.
+                    lcd_request.msg.command = LCD_CMD_DRAW_TILE;
+                    lcd_request.msg.payload.tile.col = number_selected;
+                    lcd_request.msg.payload.tile.number = 0;
+                    lcd_request.msg.payload.tile.row = LCD_TILE_ROW_CYPHER;
+                    lcd_request.msg.payload.tile.color_fg = LCD_COLOR_RED;
+                    lcd_request.msg.payload.tile.color_bg = LCD_COLOR_BLACK;
+                    xQueueSend(xQueue_Request_LCD, &lcd_request, portMAX_DELAY);
+
+                    number_selected--;
+                    selected_numbers[number_selected] = 0;
+
+                    // Clear and highlight the digit that will be re-selected.
+                    lcd_request.msg.command = LCD_CMD_DRAW_TILE;
+                    lcd_request.msg.payload.tile.col = number_selected;
+                    lcd_request.msg.payload.tile.number = 0;
+                    lcd_request.msg.payload.tile.row = LCD_TILE_ROW_CYPHER;
+                    lcd_request.msg.payload.tile.color_fg = LCD_COLOR_RED;
+                    lcd_request.msg.payload.tile.color_bg = LCD_COLOR_BLACK;
+                    xQueueSend(xQueue_Request_LCD, &lcd_request, portMAX_DELAY);
+
+                    lcd_request.msg.command = LCD_CMD_DRAW_TILE_INVERTED;
+                    lcd_request.msg.payload.tile.col = number_selected;
+                    lcd_request.msg.payload.tile.number = 0;
+                    lcd_request.msg.payload.tile.row = LCD_TILE_ROW_CYPHER;
+                    lcd_request.msg.payload.tile.color_fg = LCD_COLOR_RED;
+                    lcd_request.msg.payload.tile.color_bg = LCD_COLOR_BLACK;
+                    xQueueSend(xQueue_Request_LCD, &lcd_request, portMAX_DELAY);
+                }
+
+                print_top_lcd(select_prompt);
+                continue;
+            }
+
+            if (button_events & ECE353_BUTTON_1_PRESSED)
+            {
+                print_top_lcd("Enter 4 digits first");
+                continue;
+            }
+
+            // Parse request and setup queue for response
+            request.response_queue = Response_Queue;
+            parse_cli_data("CAP_TOUCH", &request);
+            
+            // Send the request to the capacitive touch task and wait for a touch
             xQueueSend(Queue_Request_Cap_Touch, &request, portMAX_DELAY);
             xQueueReceive(Response_Queue, &response, portMAX_DELAY);
-        } while (response.status == DEVICE_OPERATION_STATUS_READ_FAILURE);
-        
-        // Parse the response and determine which tile was touched
-        uint16_t touch_x = response.payload.cap_touch[0];
-        uint16_t touch_y = response.payload.cap_touch[1];
 
-        // Determine which row and column the touch falls in
-        int touched_row = -1;
-        int touched_col = -1;
-
-        // Check rows 1 and 2 (the number input rows)
-        for (int row = 1; row < 3; row++) {
-            int top_y = lcd_tile_top_y(row);
-            if (touch_y >= top_y && touch_y < top_y + TILE_H) {
-                touched_row = row;
-                break;
+            if (response.status != DEVICE_OPERATION_STATUS_READ_SUCCESS) {
+                continue;
             }
-        }
+            
+            // Parse the response and determine which tile was touched
+            uint16_t touch_x = response.payload.cap_touch[0];
+            uint16_t touch_y = response.payload.cap_touch[1];
 
-        // Check columns 0-3
-        for (int col = 0; col < 4; col++) {
-            int left_x = lcd_tile_left_x(col);
-            if (touch_x >= left_x && touch_x < left_x + TILE_W) {
-                touched_col = col;
-                break;
+            // Determine which row and column the touch falls in
+            int touched_row = -1;
+            int touched_col = -1;
+
+            // Check rows 1 and 2 (the number input rows)
+            for (int row = 1; row < 3; row++) {
+                int top_y = lcd_tile_top_y(row);
+                if (touch_y >= top_y && touch_y < top_y + TILE_H) {
+                    touched_row = row;
+                    break;
+                }
             }
-        }
 
-        // If the touch was not on a valid tile, try again
-        if (touched_row == -1 || touched_col == -1) {
-            continue;
-        }
+            // Check columns 0-3
+            for (int col = 0; col < 4; col++) {
+                int left_x = lcd_tile_left_x(col);
+                if (touch_x >= left_x && touch_x < left_x + TILE_W) {
+                    touched_col = col;
+                    break;
+                }
+            }
 
-        // Convert row/col to tile number: row 1 has 0-3, row 2 has 4-7
-        selected_numbers[number_selected] = touched_col + (touched_row - 1) * 4;
+            // If the touch was not on a valid tile, try again
+            if (touched_row == -1 || touched_col == -1) {
+                continue;
+            }
 
-        // Update the top to show the selected number
-        lcd_request.msg.command = LCD_CMD_DRAW_TILE;
-        lcd_request.msg.payload.tile.col = number_selected;
-        lcd_request.msg.payload.tile.number = selected_numbers[number_selected];
-        lcd_request.msg.payload.tile.row = LCD_TILE_ROW_CYPHER;
-        lcd_request.msg.payload.tile.color_fg = LCD_COLOR_RED;
-        xQueueSend(xQueue_Request_LCD, &lcd_request, portMAX_DELAY);
-        
-        // Highlight the next tile to be selected (only if there is one)
-        if (number_selected + 1 < 4) {
-            lcd_request.msg.command = LCD_CMD_DRAW_TILE_INVERTED;
-            lcd_request.msg.payload.tile.col = number_selected + 1;
-            lcd_request.msg.payload.tile.number = 0;
+            // Convert row/col to tile number: row 1 has 0-3, row 2 has 4-7
+            selected_numbers[number_selected] = touched_col + (touched_row - 1) * 4;
+
+            // Update the top to show the selected number
+            lcd_request.msg.command = LCD_CMD_DRAW_TILE;
+            lcd_request.msg.payload.tile.col = number_selected;
+            lcd_request.msg.payload.tile.number = selected_numbers[number_selected];
             lcd_request.msg.payload.tile.row = LCD_TILE_ROW_CYPHER;
             lcd_request.msg.payload.tile.color_fg = LCD_COLOR_RED;
             xQueueSend(xQueue_Request_LCD, &lcd_request, portMAX_DELAY);
+            
+            // Highlight the next tile to be selected (only if there is one)
+            if (number_selected + 1 < 4) {
+                lcd_request.msg.command = LCD_CMD_DRAW_TILE_INVERTED;
+                lcd_request.msg.payload.tile.col = number_selected + 1;
+                lcd_request.msg.payload.tile.number = 0;
+                lcd_request.msg.payload.tile.row = LCD_TILE_ROW_CYPHER;
+                lcd_request.msg.payload.tile.color_fg = LCD_COLOR_RED;
+                xQueueSend(xQueue_Request_LCD, &lcd_request, portMAX_DELAY);
+            }
+
+            // Highlight the current tile that is being touched. Tile till touch is released later
+            lcd_request.msg.command = LCD_CMD_DRAW_TILE_INVERTED;
+            lcd_request.msg.payload.tile.col = selected_numbers[number_selected] % 4;
+            lcd_request.msg.payload.tile.number = selected_numbers[number_selected];
+            lcd_request.msg.payload.tile.row = (selected_numbers[number_selected] / 4) + 1;
+            lcd_request.msg.payload.tile.color_fg = LCD_COLOR_GREEN;
+            xQueueSend(xQueue_Request_LCD, &lcd_request, portMAX_DELAY);
+
+            // Wait for the user to release the screen and unhighlight the current tile
+            do {
+                xQueueSend(Queue_Request_Cap_Touch, &request, portMAX_DELAY);
+                xQueueReceive(Response_Queue, &response, portMAX_DELAY);
+            } while (response.status == DEVICE_OPERATION_STATUS_READ_SUCCESS);
+
+            lcd_request.msg.command = LCD_CMD_DRAW_TILE;
+            lcd_request.msg.payload.tile.col = selected_numbers[number_selected] % 4;
+            lcd_request.msg.payload.tile.number = selected_numbers[number_selected];
+            lcd_request.msg.payload.tile.row = (selected_numbers[number_selected] / 4) + 1;
+            lcd_request.msg.payload.tile.color_fg = LCD_COLOR_GREEN;
+            xQueueSend(xQueue_Request_LCD, &lcd_request, portMAX_DELAY);
+
+            number_selected++;
         }
 
-        // Highlight the current tile that is being touched. Tile till touch is released later
-        lcd_request.msg.command = LCD_CMD_DRAW_TILE_INVERTED;
-        lcd_request.msg.payload.tile.col = selected_numbers[number_selected]%4;
-        lcd_request.msg.payload.tile.number = selected_numbers[number_selected];
-        lcd_request.msg.payload.tile.row = (selected_numbers[number_selected] / 4) + 1;
-        lcd_request.msg.payload.tile.color_fg = LCD_COLOR_GREEN;
-        xQueueSend(xQueue_Request_LCD, &lcd_request, portMAX_DELAY);
+        print_top_lcd("SW1: Send SW2: Delete");
 
-        // Wait for the user to release the screen and unhighlight the current tile
-        do {
-            xQueueSend(Queue_Request_Cap_Touch, &request, portMAX_DELAY);
-            xQueueReceive(Response_Queue, &response, portMAX_DELAY);
-        } while (response.status == DEVICE_OPERATION_STATUS_READ_SUCCESS);
+        EventBits_t events = xEventGroupWaitBits(ECE353_RTOS_Events,
+                                                  ECE353_BUTTON_1_PRESSED | ECE353_BUTTON_2_PRESSED,
+                                                  pdTRUE,
+                                                  pdFALSE,
+                                                  portMAX_DELAY);
 
-        lcd_request.msg.command = LCD_CMD_DRAW_TILE;
-        lcd_request.msg.payload.tile.col = selected_numbers[number_selected]%4;
-        lcd_request.msg.payload.tile.number = selected_numbers[number_selected];
-        lcd_request.msg.payload.tile.row = (selected_numbers[number_selected] / 4) + 1;
-        lcd_request.msg.payload.tile.color_fg = LCD_COLOR_GREEN;
-        xQueueSend(xQueue_Request_LCD, &lcd_request, portMAX_DELAY);
+        if (events & ECE353_BUTTON_2_PRESSED)
+        {
+            if (number_selected > 0)
+            {
+                number_selected--;
+                selected_numbers[number_selected] = 0;
 
-        number_selected++;
+                // Clear and re-highlight the digit that will be re-selected.
+                lcd_request.msg.command = LCD_CMD_DRAW_TILE;
+                lcd_request.msg.payload.tile.col = number_selected;
+                lcd_request.msg.payload.tile.number = 0;
+                lcd_request.msg.payload.tile.row = LCD_TILE_ROW_CYPHER;
+                lcd_request.msg.payload.tile.color_fg = LCD_COLOR_RED;
+                lcd_request.msg.payload.tile.color_bg = LCD_COLOR_BLACK;
+                xQueueSend(xQueue_Request_LCD, &lcd_request, portMAX_DELAY);
+
+                lcd_request.msg.command = LCD_CMD_DRAW_TILE_INVERTED;
+                lcd_request.msg.payload.tile.col = number_selected;
+                lcd_request.msg.payload.tile.number = 0;
+                lcd_request.msg.payload.tile.row = LCD_TILE_ROW_CYPHER;
+                lcd_request.msg.payload.tile.color_fg = LCD_COLOR_RED;
+                lcd_request.msg.payload.tile.color_bg = LCD_COLOR_BLACK;
+                xQueueSend(xQueue_Request_LCD, &lcd_request, portMAX_DELAY);
+            }
+
+            print_top_lcd(select_prompt);
+            continue;
+        }
+
+        if ((events & ECE353_BUTTON_1_PRESSED) && (number_selected == 4))
+        {
+            uint16_t selected_cypher =
+                (selected_numbers[0] << 12) |
+                (selected_numbers[1] << 8) |
+                (selected_numbers[2] << 4) |
+                selected_numbers[3];
+            print_top_lcd("Cypher Sent!   ");
+            return selected_cypher;
+        }
     }
-
-    // Parse the selected numbers into a single 32 bit integer and return it
-    uint32_t selected_cypher = 
-        (selected_numbers[0] << 12) |
-        (selected_numbers[1] << 8) |
-        (selected_numbers[2] << 4) |
-        selected_numbers[3];
-    free(selected_numbers);
-    return selected_cypher;
 }
 
 /**
  * @brief
- * This task will be used to run the game functionality
+ * This task will be used to run the game functionality. MAIN LOOP
  *
  * @param arg 
  * Unused parameter
@@ -232,89 +346,53 @@ void task_system_control(void *arg)
     sequence_num++;
 
     // Grab initial cypher
-    uint32_t cypher = number_select();
-    task_console_printf("Selected Cypher: 0x%04X\n\r", cypher);
-    
+    uint16_t code = number_select();
 
-    while(1)
+    Cypher_Chosen = true;
+
+    task_console_printf("Selected Cypher: 0x%X\n\r", code);
+
+    bool P1 = !(xEventGroupGetBits(ECE353_RTOS_Events) & ECE353_RTOS_EVENTS_IPC_NUM_RECEIVED);
+
+    /* Send the cypher to the other board */
+    ipc_send_number(sequence_num, code);
+
+    /* Wait for the ack */
+    bool rslt = ipc_wait_for_ack(1000);
+
+    /* Print out a message indicating if the ACK was received */
+    if(rslt)
     {
-        // Wait for SW1, SW2,or SW3 to be pressed.  If you have not gotten task_buttons.c working yet, 
-        // you will need to do so before you can proceed with this task. 
-        events = xEventGroupWaitBits(ECE353_RTOS_Events,
-                                    ECE353_BUTTON_1_PRESSED | ECE353_BUTTON_2_PRESSED | ECE353_BUTTON_3_PRESSED,
-                                    pdTRUE,
-                                    pdFALSE,
-                                    portMAX_DELAY);
-
-        if(events & ECE353_BUTTON_1_PRESSED)
-        {
-
-            /* Send the active player message  */
-            ipc_send_active_player(sequence_num);
-
-            /* Wait for the ack */
-            bool rslt = ipc_wait_for_ack(1000);
-
-            /* Print out a message indicating if the ACK was received */
-            if(rslt)
-            {
-                printf("Active Player message sent and ACK received!\n\r");
-                sequence_num++;
-            }
-            else
-            {
-                printf("Active Player message sent but no ACK received!\n\r");
-            }
-
-        }
-        else if(events & ECE353_BUTTON_2_PRESSED)
-        {
-            
-            /* Send the inactive player message  */
-            ipc_send_inactive_player(sequence_num);
-            
-            /* Wait for the ack */ 
-            bool rslt = ipc_wait_for_ack(1000);
-
-            /* Print out a message indicating if the ACK was received */
-            if(rslt)
-            {
-                printf("Inactive Player message sent and ACK received!\n\r");
-                sequence_num++;
-            }
-            else
-            {
-                printf("Inactive Player message sent but no ACK received!\n\r");
-            }
-
-        }
-        else if(events & ECE353_BUTTON_3_PRESSED)
-        {
-
-            /* Send the status message with an error code  */
-            ipc_send_status(sequence_num, IPC_STATUS_CRC_FAIL);
-
-            /* Wait for the ack */
-            bool rslt = ipc_wait_for_ack(1000);
-            
-            /* Print out a message indicating if the ACK was received */
-            if(rslt)
-            {
-                printf("Status message sent and ACK received!\n\r");
-                sequence_num++;
-            }
-            else
-            {
-                printf("Status message sent but no ACK received!\n\r");
-            }
-        }
-        else
-        {
-             printf("Unknown Event!\n\r\n\r");
-        }
+        printf("Cypher message sent and ACK received!\n\r");
+        sequence_num++;
     }
-}
+    else
+    {
+        printf("Cypher message sent but no ACK received!\n\r");
+    }
 
+    // Wait for other user's cypher
+    events = xEventGroupWaitBits(ECE353_RTOS_Events,
+                                ECE353_RTOS_EVENTS_IPC_NUM_RECEIVED,
+                                pdTRUE,
+                                pdFALSE,
+                                portMAX_DELAY);
+
+    cypher = Sent_Code;
+
+    task_console_printf("Other User's Cypher 0x%X!\n\r", cypher);
+
+    task_console_printf("Starting Game! You are Player %d\n\r", P1 ? 1 : 2);
+
+    uint16_t guess = 0;
+    do {
+        guess = number_select();
+        guess_number++;
+        task_console_printf("You guessed: 0x%X\n\r", guess);
+    } while (guess != cypher);
+    printf("Pass\n\r");
+    task_console_printf("Congratulations! You guessed the cypher!\n\r");
+}
 
 /**
  * @brief

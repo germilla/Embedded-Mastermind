@@ -55,7 +55,7 @@ void app_init_hw(void)
     printf("* Name:%s\n\r", NAME);
     printf("**************************************************\n\r");
     
-    /* ADD CODE */
+    
     // Initialze buttons
     rslt = buttons_init_gpio();
     if (rslt != CY_RSLT_SUCCESS)

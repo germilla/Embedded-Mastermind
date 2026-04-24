@@ -80,7 +80,7 @@ void circular_buffer_delete(circular_buffer_t *buffer)
 //*****************************************************************************
 bool circular_buffer_empty(circular_buffer_t *buffer)
 {
-  /* ADD CODE */
+  
 
   /* Use the buffer->produce_count and buffer->consume count to determine if
    * the circular buffer is empty
@@ -103,7 +103,7 @@ bool circular_buffer_empty(circular_buffer_t *buffer)
 //*****************************************************************************
 bool circular_buffer_full(circular_buffer_t *buffer)
 {
-  /* ADD CODE */
+  
 
   /* Use the buffer->produce_count and buffer->consume count to determine if
    * the circular buffer is full
@@ -127,7 +127,7 @@ bool circular_buffer_full(circular_buffer_t *buffer)
 //*******************************************************************************
 bool circular_buffer_add(circular_buffer_t *buffer, char c)
 {
-  /* ADD CODE */
+  
 
   // Use the function defined above to determine if the circular buffer is full
   // If the circular buffer is full, return false.
@@ -159,7 +159,7 @@ bool circular_buffer_remove(circular_buffer_t *buffer, char *c)
 {
   char return_char;
 
-  /* ADD CODE */
+  
 
   // If the circular buffer is empty, return 0.
   // Use the function defined above to determine if the circular buffer is empty

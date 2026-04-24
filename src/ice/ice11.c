@@ -45,7 +45,7 @@ void discover_board(uint16_t *sequence_num)
     
     while(discovery_complete == false)
     {
-        /* ADD CODE */
+        
         vTaskDelay(500);
         printf("Discovering other board...\n\r");
         
@@ -93,7 +93,7 @@ void task_system_control(void *arg)
 
         if(events & ECE353_BUTTON_1_PRESSED)
         {
-            /* ADD CODE */
+            
 
             /* Send the active player message  */
             ipc_send_active_player(sequence_num);
@@ -115,7 +115,7 @@ void task_system_control(void *arg)
         }
         else if(events & ECE353_BUTTON_2_PRESSED)
         {
-            /* ADD CODE */
+            
             
             /* Send the inactive player message  */
             ipc_send_inactive_player(sequence_num);
@@ -137,7 +137,7 @@ void task_system_control(void *arg)
         }
         else if(events & ECE353_BUTTON_3_PRESSED)
         {
-            /* ADD CODE */
+            
 
             /* Send the status message with an error code  */
             ipc_send_status(sequence_num, IPC_STATUS_CRC_FAIL);
