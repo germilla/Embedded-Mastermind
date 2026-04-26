@@ -384,14 +384,73 @@ void task_system_control(void *arg)
 
     task_console_printf("Starting Game! You are Player %d\n\r", P1 ? 1 : 2);
 
+    // Main game loop. Keep taking guesses until either the user guesses the other player's cypher or the other player guesses the user's cypher. If both players guess each other's cypher on the same turn, it's a tie.
     uint16_t guess = 0;
-    do {
-        guess = number_select();
-        guess_number++;
-        task_console_printf("You guessed: 0x%X\n\r", guess);
-    } while (guess != cypher);
-    printf("Pass\n\r");
-    task_console_printf("Congratulations! You guessed the cypher!\n\r");
+    if (P1) {
+        do {
+            // Take guess
+            guess = number_select();
+            guess_number++;
+            task_console_printf("You guessed: 0x%X\n\r", guess);
+
+            // Parse the guess and determine how much is right
+            // TODO TODO TODO
+            
+            // Send guess to other player
+            ipc_send_number(sequence_num, guess);
+
+            // Wait for ack
+            rslt = ipc_wait_for_ack(1000);
+
+            // Wait your turn
+            print_top_lcd("Waiting for other player's guess...");
+            events = xEventGroupWaitBits(ECE353_RTOS_Events,
+                                        ECE353_RTOS_EVENTS_IPC_NUM_RECEIVED,
+                                        pdTRUE,
+                                        pdFALSE,
+                                        portMAX_DELAY);
+        } while (guess != cypher | Sent_Code != code);
+    } else {
+        do {
+            // Wait your turn
+            print_top_lcd("Waiting for other player's guess...");
+            events = xEventGroupWaitBits(ECE353_RTOS_Events,
+                                        ECE353_RTOS_EVENTS_IPC_NUM_RECEIVED,
+                                        pdTRUE,
+                                        pdFALSE,
+                                        portMAX_DELAY);
+
+            // Take guess
+            guess = number_select();
+            guess_number++;
+            task_console_printf("You guessed: 0x%X\n\r", guess);
+
+            // Parse the guess and determine how much is right
+            // TODO TODO TODO
+
+            // Send guess to other player
+            ipc_send_number(sequence_num, guess);
+
+            // Wait for ack
+            rslt = ipc_wait_for_ack(1000);
+        } while (guess != cypher | Sent_Code != code);
+    }
+
+    // Determine win/lose/tie and print result to console and LCD
+    char* message;
+    if (guess == cypher && Sent_Code == code) {
+        message = "It's a tie!                ";
+        task_console_printf("You and the other player guessed each other's cypher at the same time!\n\r");
+    } else if (guess == cypher) {
+        message = "You Win!                      ";
+        task_console_printf("You win!\n\r");
+    } else {
+        message = "You Lose!                  ";
+        task_console_printf("You Lose!\n\r");
+    }
+    print_top_lcd(message);
+
+    
 }
 
 /**
