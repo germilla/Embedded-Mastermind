@@ -210,6 +210,27 @@ bool ipc_send_ack(uint16_t sequence_num) {
 }
 
 /**
+ * @brief Sends a new-game request to the other board so both boards
+ *        can reset and start a fresh round without a power cycle.
+ */
+bool ipc_send_new_game(uint16_t sequence_num) {
+    ipc_packet_t packet = {
+        .start_byte = IPC_PACKET_START,
+        .cmd = IPC_CMD_NEW_GAME,
+        .sequence_num = sequence_num,
+        .payload.status = IPC_STATUS_OK
+    };
+
+    packet.checksum = calculate_checksum(&packet);
+
+    if(xQueueSend(Queue_IPC_Tx, &packet, pdMS_TO_TICKS(100)) != pdTRUE)
+        return false;
+
+    printf("New Game message sent with sequence number: %d\n\r", sequence_num);
+    return true;
+}
+
+/**
  * @brief
  * Interrupt handler for the IPC UART. This function handles both RX and TX interrupts.
  *

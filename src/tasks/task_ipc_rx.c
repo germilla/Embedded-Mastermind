@@ -90,6 +90,12 @@ void task_ipc_rx(void *param)
 
                     ipc_send_ack(((ipc_packet_t *)IPC_Rx_Consume_Buffer)->sequence_num);
                     break;
+                case IPC_CMD_NEW_GAME:
+                    printf("Received New Game Command\r\n");
+                    /* Signal the system control task that the other board wants a new game */
+                    xEventGroupSetBits(ECE353_RTOS_Events, ECE353_RTOS_EVENTS_IPC_NEW_GAME);
+                    ipc_send_ack(((ipc_packet_t *)IPC_Rx_Consume_Buffer)->sequence_num);
+                    break;
                 default:
                     printf("Received Unknown Command\r\n");
             }

@@ -23,7 +23,15 @@
 #include "task_light_sensor.h"
 
 #define  TASK_SYSTEM_CONTROL_STACK_SIZE    (configMINIMAL_STACK_SIZE*5)
-#define  TASK_SYSTEM_CONTROL_PRIORITY      (tskIDLE_PRIORITY + 1U)  
+#define  TASK_SYSTEM_CONTROL_PRIORITY      (tskIDLE_PRIORITY + 1U)
+
+/* EEPROM address used to store the best (lowest) guess count.
+ * Two bytes: address 0x0000 = low byte, 0x0001 = high byte. */
+#define EEPROM_ADDR_BEST_SCORE_LO  0x0000
+#define EEPROM_ADDR_BEST_SCORE_HI  0x0001
+
+/* Sentinel value stored in EEPROM when no best score exists yet */
+#define BEST_SCORE_NONE            0xFFFF  
 
 /*****************************************************************************/
 /* Function Definitions                                                      */

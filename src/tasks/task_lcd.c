@@ -200,6 +200,38 @@ void task_lcd(void *pvParameters)
                 status = true;
                 break;
 
+            case LCD_CMD_PRINT_LINE3:
+                // Print to screen at (10, 150) — third feedback line
+                width = 10;
+                
+                for (int i = 0; i < 32; i++) {
+                    if (lcd_request.msg.payload.message[i] == '\0') {
+                        break;
+                    }
+
+                    // Convert character to ascii and get info from font info
+                    location = ((int)lcd_request.msg.payload.message[i]) - Consolas_20ptFontInfo.start_char;
+                    FONT_CHAR_INFO info = Consolas_20ptDescriptors[location];
+
+                    // Draw the character to the screen using theme-aware colors
+                    lcd_draw_image(
+                        width, 
+                        150, 
+                        info.width, 
+                        info.height, 
+                        Consolas_20ptBitmaps + info.offset, 
+                        Dark_Mode ? LCD_COLOR_WHITE : LCD_COLOR_BLACK, 
+                        Dark_Mode ? LCD_COLOR_BLACK : LCD_COLOR_WHITE, 
+                        false
+                    );
+
+                    // Update width for next character
+                    width += info.width;
+                }
+
+                status = true;
+                break;
+
             case LCD_CMD_UPDATE_THEME:
                 // Repaint the entire screen background for the new theme
                 lcd_clear_screen(Dark_Mode ? LCD_COLOR_BLACK : LCD_COLOR_WHITE);

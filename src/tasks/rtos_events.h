@@ -32,6 +32,8 @@ extern EventGroupHandle_t ECE353_RTOS_Events;
 
 #define ECE353_THEME_CHANGED                   ( 1 << 5 ) // Event 6: ambient light mode changed
 
+#define ECE353_RTOS_EVENTS_IPC_NEW_GAME        ( 1 << 6 ) // Event 7: other board requested new game
+
 #endif // ECE353_FREERTOS
 
 #endif // __RTOS_EVENTS_H__

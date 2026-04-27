@@ -45,6 +45,7 @@ typedef enum {
     IPC_CMD_STATUS = 0xC3,
     IPC_CMD_ACK = 0xC4,
     IPC_CMD_NUMBER = 0xC5,
+    IPC_CMD_NEW_GAME = 0xC6,
 } ipc_cmd_t;
 
 /* IPC Error Types 
@@ -116,6 +117,7 @@ bool ipc_send_inactive_player(uint16_t sequence_num);
 bool ipc_send_status(uint16_t sequence_num, ipc_status_t status);
 bool ipc_send_ack(uint16_t sequence_num);
 bool ipc_wait_for_ack(uint32_t timeout_ms);
+bool ipc_send_new_game(uint16_t sequence_num);
 
 #endif /* ECE353_FREERTOS */
 
