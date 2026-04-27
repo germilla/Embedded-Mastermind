@@ -19,6 +19,7 @@
 #include "task_eeprom.h"
 #include "rtos_events.h"
 #include "task_lcd.h"
+#include "task_light_sensor.h"
 
 char APP_DESCRIPTION[] = "ECE353 S26 HW05";
 
@@ -39,8 +40,39 @@ QueueHandle_t Response_Queue;
 bool Cypher_Chosen = 0;
 int guess_number = 1;
 
+/* Dark mode flag: true when ambient light is low (dark environment).
+ * Polled and updated by the task_ambient_light task. */
+volatile bool Dark_Mode = true;
+
+/* Threshold for ambient light sensor reading.
+ * Readings below this value are considered "dark" (dark mode).
+ * Readings at or above this value are considered "light" (light mode). */
+#define LIGHT_THRESHOLD 100
+
 // Store the code that the other player sent us for use in the game
 uint16_t cypher = 0;
+
+/*****************************************************************************/
+/* Theme-aware color helpers                                                 */
+/*****************************************************************************/
+
+/* Returns the current background color for tiles based on Dark_Mode */
+static inline uint16_t theme_bg(void)
+{
+    return Dark_Mode ? LCD_COLOR_BLACK : LCD_COLOR_WHITE;
+}
+
+/* Returns the current text foreground color (for status messages) */
+static inline uint16_t theme_text_fg(void)
+{
+    return Dark_Mode ? LCD_COLOR_WHITE : LCD_COLOR_BLACK;
+}
+
+/* Returns the current text background color (for status messages) */
+static inline uint16_t theme_text_bg(void)
+{
+    return Dark_Mode ? LCD_COLOR_BLACK : LCD_COLOR_WHITE;
+}
 
 /*****************************************************************************/
 /* Function Definitions                                                      */
@@ -75,6 +107,127 @@ void print_top_lcd(const char *message) {
   xQueueSend(xQueue_Request_LCD, &lcd_request, portMAX_DELAY);
 }
 
+/**
+ * @brief
+ * Redraws the full number-select UI: clears the screen with the current theme
+ * background, reprints the status text, redraws all 8 number tiles (0-7),
+ * redraws the cypher row with the currently selected values, and highlights
+ * the active cursor position.
+ *
+ * @param prompt        The text to display in the top message area
+ * @param selected      Array of 4 selected digit values
+ * @param num_selected  How many digits have been chosen so far (0-4)
+ */
+static void redraw_ui(const char *prompt, const int selected[4], int num_selected)
+{
+    lcd_msg_request_t lcd_request;
+    lcd_request.return_queue = NULL;
+
+    /* Step 1: Clear the screen with the current theme background */
+    lcd_request.msg.command = LCD_CMD_UPDATE_THEME;
+    xQueueSend(xQueue_Request_LCD, &lcd_request, portMAX_DELAY);
+
+    /* Step 2: Reprint the status text */
+    print_top_lcd(prompt);
+
+    /* Step 3: Redraw the 8 number-input tiles (rows 1-2, cols 0-3) */
+    lcd_request.msg.command = LCD_CMD_DRAW_TILE;
+    lcd_request.msg.payload.tile.color_fg = LCD_COLOR_GREEN;
+    lcd_request.msg.payload.tile.color_bg = theme_bg();
+    for (int row = 1; row < 3; row++) {
+        for (int col = 0; col < 4; col++) {
+            lcd_request.msg.payload.tile.row = row;
+            lcd_request.msg.payload.tile.col = col;
+            lcd_request.msg.payload.tile.number = col + (row - 1) * 4;
+            xQueueSend(xQueue_Request_LCD, &lcd_request, portMAX_DELAY);
+        }
+    }
+
+    /* Step 4: Redraw the cypher row tiles with their current values */
+    for (int col = 0; col < 4; col++) {
+        if (col < num_selected) {
+            /* Already-selected digit: show the chosen number */
+            lcd_request.msg.command = LCD_CMD_DRAW_TILE;
+            lcd_request.msg.payload.tile.row = LCD_TILE_ROW_CYPHER;
+            lcd_request.msg.payload.tile.col = col;
+            lcd_request.msg.payload.tile.number = selected[col];
+            lcd_request.msg.payload.tile.color_fg = LCD_COLOR_RED;
+            lcd_request.msg.payload.tile.color_bg = theme_bg();
+            xQueueSend(xQueue_Request_LCD, &lcd_request, portMAX_DELAY);
+        } else if (col == num_selected) {
+            /* Active cursor position: draw inverted (highlighted) blank */
+            lcd_request.msg.command = LCD_CMD_DRAW_TILE_INVERTED;
+            lcd_request.msg.payload.tile.row = LCD_TILE_ROW_CYPHER;
+            lcd_request.msg.payload.tile.col = col;
+            lcd_request.msg.payload.tile.number = 0;
+            lcd_request.msg.payload.tile.color_fg = LCD_COLOR_RED;
+            lcd_request.msg.payload.tile.color_bg = theme_bg();
+            xQueueSend(xQueue_Request_LCD, &lcd_request, portMAX_DELAY);
+        } else {
+            /* Future digit slot: draw normal blank */
+            lcd_request.msg.command = LCD_CMD_DRAW_TILE;
+            lcd_request.msg.payload.tile.row = LCD_TILE_ROW_CYPHER;
+            lcd_request.msg.payload.tile.col = col;
+            lcd_request.msg.payload.tile.number = 0;
+            lcd_request.msg.payload.tile.color_fg = LCD_COLOR_RED;
+            lcd_request.msg.payload.tile.color_bg = theme_bg();
+            xQueueSend(xQueue_Request_LCD, &lcd_request, portMAX_DELAY);
+        }
+    }
+}
+
+/**
+ * @brief
+ * Redraws the screen during a waiting state (e.g. waiting for other player).
+ * Clears the screen background, reprints the text message, and redraws
+ * the number tiles (0-7) and the cypher row with the given packed digits.
+ *
+ * @param message         The text to display in the top message area
+ * @param packed_digits   The 4 packed digits to show in the cypher row (4 nibbles)
+ */
+static void redraw_wait_screen(const char *message, uint16_t packed_digits)
+{
+    lcd_msg_request_t lcd_request;
+    lcd_request.return_queue = NULL;
+
+    /* Clear the screen with the current theme background */
+    lcd_request.msg.command = LCD_CMD_UPDATE_THEME;
+    xQueueSend(xQueue_Request_LCD, &lcd_request, portMAX_DELAY);
+
+    /* Reprint the status text */
+    print_top_lcd(message);
+
+    /* Redraw the 8 number-input tiles (rows 1-2, cols 0-3) */
+    lcd_request.msg.command = LCD_CMD_DRAW_TILE;
+    lcd_request.msg.payload.tile.color_fg = LCD_COLOR_GREEN;
+    lcd_request.msg.payload.tile.color_bg = theme_bg();
+    for (int row = 1; row < 3; row++) {
+        for (int col = 0; col < 4; col++) {
+            lcd_request.msg.payload.tile.row = row;
+            lcd_request.msg.payload.tile.col = col;
+            lcd_request.msg.payload.tile.number = col + (row - 1) * 4;
+            xQueueSend(xQueue_Request_LCD, &lcd_request, portMAX_DELAY);
+        }
+    }
+
+    /* Unpack the 4 digits and redraw the cypher row */
+    int digits[4];
+    digits[0] = (packed_digits >> 12) & 0xF;
+    digits[1] = (packed_digits >> 8)  & 0xF;
+    digits[2] = (packed_digits >> 4)  & 0xF;
+    digits[3] =  packed_digits        & 0xF;
+
+    lcd_request.msg.command = LCD_CMD_DRAW_TILE;
+    lcd_request.msg.payload.tile.color_fg = LCD_COLOR_RED;
+    lcd_request.msg.payload.tile.color_bg = theme_bg();
+    for (int col = 0; col < 4; col++) {
+        lcd_request.msg.payload.tile.row = LCD_TILE_ROW_CYPHER;
+        lcd_request.msg.payload.tile.col = col;
+        lcd_request.msg.payload.tile.number = digits[col];
+        xQueueSend(xQueue_Request_LCD, &lcd_request, portMAX_DELAY);
+    }
+}
+
 /* At start of game show the numbers on the screen and allow user to chose 4 numbers, then returns those 4 numbers */
 uint16_t number_select(void) {
     /* Allocate a lcd_msg_request_t variable */
@@ -96,7 +249,7 @@ uint16_t number_select(void) {
         lcd_request.msg.payload.tile.col = col;
         lcd_request.msg.payload.tile.number = 0; // number is ignored for code tiles
         lcd_request.msg.payload.tile.color_fg = LCD_COLOR_RED;
-        lcd_request.msg.payload.tile.color_bg = LCD_COLOR_BLACK;
+        lcd_request.msg.payload.tile.color_bg = theme_bg();
         
         xQueueSend(xQueue_Request_LCD, &lcd_request, portMAX_DELAY);
     }
@@ -105,7 +258,7 @@ uint16_t number_select(void) {
     /* Draw numbers 0-7 for the user input*/
     lcd_request.msg.command = LCD_CMD_DRAW_TILE;
     lcd_request.msg.payload.tile.color_fg = LCD_COLOR_GREEN;
-    lcd_request.msg.payload.tile.color_bg = LCD_COLOR_BLACK;
+    lcd_request.msg.payload.tile.color_bg = theme_bg();
     for (int row = 1; row < 3; row++) {
         for(int col = 0; col < 4; col++) {
             lcd_request.msg.payload.tile.row = row;
@@ -138,6 +291,15 @@ uint16_t number_select(void) {
             // Wait for user to select a number
             vTaskDelay(100);
 
+            /* Check if the ambient light theme changed; if so, redraw the full UI */
+            EventBits_t theme_bits = xEventGroupWaitBits(ECE353_RTOS_Events,
+                                                          ECE353_THEME_CHANGED,
+                                                          pdTRUE, pdFALSE, 0);
+            if (theme_bits & ECE353_THEME_CHANGED)
+            {
+                redraw_ui(select_prompt, selected_numbers, number_selected);
+            }
+
             // Process SW1/SW2 while selecting digits.
             button_events = xEventGroupWaitBits(ECE353_RTOS_Events,
                                                 ECE353_BUTTON_1_PRESSED | ECE353_BUTTON_2_PRESSED,
@@ -155,7 +317,7 @@ uint16_t number_select(void) {
                     lcd_request.msg.payload.tile.number = 0;
                     lcd_request.msg.payload.tile.row = LCD_TILE_ROW_CYPHER;
                     lcd_request.msg.payload.tile.color_fg = LCD_COLOR_RED;
-                    lcd_request.msg.payload.tile.color_bg = LCD_COLOR_BLACK;
+                    lcd_request.msg.payload.tile.color_bg = theme_bg();
                     xQueueSend(xQueue_Request_LCD, &lcd_request, portMAX_DELAY);
 
                     number_selected--;
@@ -167,7 +329,7 @@ uint16_t number_select(void) {
                     lcd_request.msg.payload.tile.number = 0;
                     lcd_request.msg.payload.tile.row = LCD_TILE_ROW_CYPHER;
                     lcd_request.msg.payload.tile.color_fg = LCD_COLOR_RED;
-                    lcd_request.msg.payload.tile.color_bg = LCD_COLOR_BLACK;
+                    lcd_request.msg.payload.tile.color_bg = theme_bg();
                     xQueueSend(xQueue_Request_LCD, &lcd_request, portMAX_DELAY);
 
                     lcd_request.msg.command = LCD_CMD_DRAW_TILE_INVERTED;
@@ -175,7 +337,7 @@ uint16_t number_select(void) {
                     lcd_request.msg.payload.tile.number = 0;
                     lcd_request.msg.payload.tile.row = LCD_TILE_ROW_CYPHER;
                     lcd_request.msg.payload.tile.color_fg = LCD_COLOR_RED;
-                    lcd_request.msg.payload.tile.color_bg = LCD_COLOR_BLACK;
+                    lcd_request.msg.payload.tile.color_bg = theme_bg();
                     xQueueSend(xQueue_Request_LCD, &lcd_request, portMAX_DELAY);
                 }
 
@@ -241,6 +403,7 @@ uint16_t number_select(void) {
             lcd_request.msg.payload.tile.number = selected_numbers[number_selected];
             lcd_request.msg.payload.tile.row = LCD_TILE_ROW_CYPHER;
             lcd_request.msg.payload.tile.color_fg = LCD_COLOR_RED;
+            lcd_request.msg.payload.tile.color_bg = theme_bg();
             xQueueSend(xQueue_Request_LCD, &lcd_request, portMAX_DELAY);
             
             // Highlight the next tile to be selected (only if there is one)
@@ -250,6 +413,7 @@ uint16_t number_select(void) {
                 lcd_request.msg.payload.tile.number = 0;
                 lcd_request.msg.payload.tile.row = LCD_TILE_ROW_CYPHER;
                 lcd_request.msg.payload.tile.color_fg = LCD_COLOR_RED;
+                lcd_request.msg.payload.tile.color_bg = theme_bg();
                 xQueueSend(xQueue_Request_LCD, &lcd_request, portMAX_DELAY);
             }
 
@@ -259,6 +423,7 @@ uint16_t number_select(void) {
             lcd_request.msg.payload.tile.number = selected_numbers[number_selected];
             lcd_request.msg.payload.tile.row = (selected_numbers[number_selected] / 4) + 1;
             lcd_request.msg.payload.tile.color_fg = LCD_COLOR_GREEN;
+            lcd_request.msg.payload.tile.color_bg = theme_bg();
             xQueueSend(xQueue_Request_LCD, &lcd_request, portMAX_DELAY);
 
             // Wait for the user to release the screen and unhighlight the current tile
@@ -272,6 +437,7 @@ uint16_t number_select(void) {
             lcd_request.msg.payload.tile.number = selected_numbers[number_selected];
             lcd_request.msg.payload.tile.row = (selected_numbers[number_selected] / 4) + 1;
             lcd_request.msg.payload.tile.color_fg = LCD_COLOR_GREEN;
+            lcd_request.msg.payload.tile.color_bg = theme_bg();
             xQueueSend(xQueue_Request_LCD, &lcd_request, portMAX_DELAY);
 
             number_selected++;
@@ -279,11 +445,24 @@ uint16_t number_select(void) {
 
         print_top_lcd("SW1: Send SW2: Delete");
 
-        EventBits_t events = xEventGroupWaitBits(ECE353_RTOS_Events,
-                                                  ECE353_BUTTON_1_PRESSED | ECE353_BUTTON_2_PRESSED,
-                                                  pdTRUE,
-                                                  pdFALSE,
-                                                  portMAX_DELAY);
+        /* Wait for a button press, but also check for theme changes */
+        EventBits_t events;
+        while (1)
+        {
+            events = xEventGroupWaitBits(ECE353_RTOS_Events,
+                                          ECE353_BUTTON_1_PRESSED | ECE353_BUTTON_2_PRESSED | ECE353_THEME_CHANGED,
+                                          pdTRUE,
+                                          pdFALSE,
+                                          portMAX_DELAY);
+
+            if (events & ECE353_THEME_CHANGED)
+            {
+                /* Theme changed while waiting for confirm/delete; redraw and keep waiting */
+                redraw_ui("SW1: Send SW2: Delete", selected_numbers, number_selected);
+                continue;
+            }
+            break; /* Got a button press, proceed */
+        }
 
         if (events & ECE353_BUTTON_2_PRESSED)
         {
@@ -298,7 +477,7 @@ uint16_t number_select(void) {
                 lcd_request.msg.payload.tile.number = 0;
                 lcd_request.msg.payload.tile.row = LCD_TILE_ROW_CYPHER;
                 lcd_request.msg.payload.tile.color_fg = LCD_COLOR_RED;
-                lcd_request.msg.payload.tile.color_bg = LCD_COLOR_BLACK;
+                lcd_request.msg.payload.tile.color_bg = theme_bg();
                 xQueueSend(xQueue_Request_LCD, &lcd_request, portMAX_DELAY);
 
                 lcd_request.msg.command = LCD_CMD_DRAW_TILE_INVERTED;
@@ -306,7 +485,7 @@ uint16_t number_select(void) {
                 lcd_request.msg.payload.tile.number = 0;
                 lcd_request.msg.payload.tile.row = LCD_TILE_ROW_CYPHER;
                 lcd_request.msg.payload.tile.color_fg = LCD_COLOR_RED;
-                lcd_request.msg.payload.tile.color_bg = LCD_COLOR_BLACK;
+                lcd_request.msg.payload.tile.color_bg = theme_bg();
                 xQueueSend(xQueue_Request_LCD, &lcd_request, portMAX_DELAY);
             }
 
@@ -371,12 +550,22 @@ void task_system_control(void *arg)
         printf("Cypher message sent but no ACK received!\n\r");
     }
 
-    // Wait for other user's cypher
-    events = xEventGroupWaitBits(ECE353_RTOS_Events,
-                                ECE353_RTOS_EVENTS_IPC_NUM_RECEIVED,
-                                pdTRUE,
-                                pdFALSE,
-                                portMAX_DELAY);
+    // Wait for other user's cypher — also handle theme changes
+    while (1)
+    {
+        events = xEventGroupWaitBits(ECE353_RTOS_Events,
+                                    ECE353_RTOS_EVENTS_IPC_NUM_RECEIVED | ECE353_THEME_CHANGED,
+                                    pdTRUE,
+                                    pdFALSE,
+                                    portMAX_DELAY);
+        if (events & ECE353_THEME_CHANGED)
+        {
+            /* Theme changed: redraw screen with tiles showing the sent cypher */
+            redraw_wait_screen("Cypher Sent!   ", code);
+            continue;
+        }
+        break; /* Got IPC_NUM_RECEIVED */
+    }
 
     cypher = Sent_Code;
 
@@ -402,23 +591,44 @@ void task_system_control(void *arg)
             // Wait for ack
             rslt = ipc_wait_for_ack(1000);
 
-            // Wait your turn
+            // Wait your turn — also handle theme changes while waiting
             print_top_lcd("Waiting for other player's guess...");
-            events = xEventGroupWaitBits(ECE353_RTOS_Events,
-                                        ECE353_RTOS_EVENTS_IPC_NUM_RECEIVED,
-                                        pdTRUE,
-                                        pdFALSE,
-                                        portMAX_DELAY);
+            while (1)
+            {
+                events = xEventGroupWaitBits(ECE353_RTOS_Events,
+                                            ECE353_RTOS_EVENTS_IPC_NUM_RECEIVED | ECE353_THEME_CHANGED,
+                                            pdTRUE,
+                                            pdFALSE,
+                                            portMAX_DELAY);
+                if (events & ECE353_THEME_CHANGED)
+                {
+                    /* Theme changed: redraw screen with tiles showing the last guess */
+                    redraw_wait_screen("Waiting for other player's guess...", guess);
+                    continue;
+                }
+                break; /* Got IPC_NUM_RECEIVED */
+            }
         } while (guess != cypher | Sent_Code != code);
     } else {
         do {
-            // Wait your turn
+            // Wait your turn — also handle theme changes while waiting
             print_top_lcd("Waiting for other player's guess...");
-            events = xEventGroupWaitBits(ECE353_RTOS_Events,
-                                        ECE353_RTOS_EVENTS_IPC_NUM_RECEIVED,
-                                        pdTRUE,
-                                        pdFALSE,
-                                        portMAX_DELAY);
+            while (1)
+            {
+                events = xEventGroupWaitBits(ECE353_RTOS_Events,
+                                            ECE353_RTOS_EVENTS_IPC_NUM_RECEIVED | ECE353_THEME_CHANGED,
+                                            pdTRUE,
+                                            pdFALSE,
+                                            portMAX_DELAY);
+                if (events & ECE353_THEME_CHANGED)
+                {
+                    /* Theme changed: redraw screen with tiles showing the sent cypher
+                     * (P2 hasn't guessed yet on first iteration, use code as fallback) */
+                    redraw_wait_screen("Waiting for other player's guess...", (guess != 0) ? guess : code);
+                    continue;
+                }
+                break; /* Got IPC_NUM_RECEIVED */
+            }
 
             // Take guess
             guess = number_select();
@@ -451,6 +661,68 @@ void task_system_control(void *arg)
     print_top_lcd(message);
 
     
+}
+
+/**
+ * @brief
+ * Task that periodically reads the ambient light sensor and updates Dark_Mode.
+ * When the mode changes, it sends an LCD_CMD_UPDATE_THEME command so the LCD
+ * task repaints the background, and then sends a LCD_CMD_PRINT_MESSAGE to
+ * redisplay the current status message in the correct colors.
+ *
+ * @param arg
+ * Unused parameter
+ */
+void task_ambient_light(void *arg)
+{
+    (void)arg;
+
+    /* Create a private response queue for sensor readings */
+    QueueHandle_t light_response_queue = xQueueCreate(1, sizeof(device_response_msg_t));
+    if (light_response_queue == NULL)
+    {
+        printf("Failed to create light sensor response queue!\n\r");
+        vTaskSuspend(NULL);
+    }
+
+    uint16_t ambient_light = 0;
+
+    /* Perform an initial read to set Dark_Mode before any UI is drawn */
+    if (system_sensors_get_light(light_response_queue, &ambient_light))
+    {
+        Dark_Mode = (ambient_light < LIGHT_THRESHOLD);
+        task_console_printf("Initial ambient light: %u -> %s mode\n\r",
+                            ambient_light, Dark_Mode ? "DARK" : "LIGHT");
+    }
+
+    /* Continuously poll the light sensor and detect changes */
+    while (1)
+    {
+        /* Wait 500 ms between readings to match the sensor measurement rate */
+        vTaskDelay(pdMS_TO_TICKS(500));
+
+        /* Read the ambient light level from the sensor */
+        if (!system_sensors_get_light(light_response_queue, &ambient_light))
+        {
+            /* Sensor read failed; try again next cycle */
+            continue;
+        }
+
+        /* Determine the new mode from the sensor reading */
+        bool new_dark_mode = (ambient_light < LIGHT_THRESHOLD);
+
+        /* Only update the UI when the mode actually changes */
+        if (new_dark_mode != Dark_Mode)
+        {
+            Dark_Mode = new_dark_mode;
+
+            task_console_printf("Ambient light: %u -> switching to %s mode\n\r",
+                                ambient_light, Dark_Mode ? "DARK" : "LIGHT");
+
+            /* Set event bit so the game loops know to redraw the UI */
+            xEventGroupSetBits(ECE353_RTOS_Events, ECE353_THEME_CHANGED);
+        }
+    }
 }
 
 /**
@@ -618,6 +890,24 @@ void app_main(void)
         for(int i = 0; i < 10000; i++);
         CY_ASSERT(0);
     }
+
+    // Initialize the light sensor task resources
+    if(!task_light_sensor_resources_init(&I2C_Semaphore, I2C_Monarch_Obj))
+    {
+        printf("Light Sensor Task initialization failed!\n\r");
+        for(int i = 0; i < 10000; i++);
+        CY_ASSERT(0);
+    }
+
+    // Create the ambient light monitoring task (runs continuously)
+    xTaskCreate(
+        task_ambient_light,
+        "Ambient Light",
+        configMINIMAL_STACK_SIZE * 2,
+        NULL,
+        tskIDLE_PRIORITY + 1,
+        NULL
+    );
 
     // Create the System Control Task
     xTaskCreate(

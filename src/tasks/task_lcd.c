@@ -12,6 +12,11 @@
  #include "task_lcd.h"
  #include "lcd-fonts.h"
 
+/* Include hw05.h conditionally to access the Dark_Mode flag */
+#if defined(HW05)
+#include "hw05.h"
+#endif
+
 #if defined(ECE353_FREERTOS)
 
 /* FreeRTOS Queue for LCD messages */
@@ -49,15 +54,15 @@ void task_lcd(void *pvParameters)
                     location = ((int)lcd_request.msg.payload.message[i]) - Consolas_20ptFontInfo.start_char;
                     FONT_CHAR_INFO info = Consolas_20ptDescriptors[location];
 
-                    // Draw the character to the screen
+                    // Draw the character to the screen using theme-aware colors
                     lcd_draw_image(
                         width, 
                         0, 
                         info.width, 
                         info.height, 
                         Consolas_20ptBitmaps + info.offset, 
-                        LCD_COLOR_WHITE, 
-                        LCD_COLOR_BLACK, 
+                        Dark_Mode ? LCD_COLOR_WHITE : LCD_COLOR_BLACK, 
+                        Dark_Mode ? LCD_COLOR_BLACK : LCD_COLOR_WHITE, 
                         false
                     );
 
@@ -142,15 +147,15 @@ void task_lcd(void *pvParameters)
                     location = ((int)lcd_request.msg.payload.message[i]) - Consolas_20ptFontInfo.start_char;
                     FONT_CHAR_INFO info = Consolas_20ptDescriptors[location];
 
-                    // Draw the character to the screen
+                    // Draw the character to the screen using theme-aware colors
                     lcd_draw_image(
                         width, 
                         50, 
                         info.width, 
                         info.height, 
                         Consolas_20ptBitmaps + info.offset, 
-                        LCD_COLOR_WHITE, 
-                        LCD_COLOR_BLACK, 
+                        Dark_Mode ? LCD_COLOR_WHITE : LCD_COLOR_BLACK, 
+                        Dark_Mode ? LCD_COLOR_BLACK : LCD_COLOR_WHITE, 
                         false
                     );
 
@@ -176,15 +181,15 @@ void task_lcd(void *pvParameters)
                     location = ((int)lcd_request.msg.payload.message[i]) - Consolas_20ptFontInfo.start_char;
                     FONT_CHAR_INFO info = Consolas_20ptDescriptors[location];
 
-                    // Draw the character to the screen
+                    // Draw the character to the screen using theme-aware colors
                     lcd_draw_image(
                         width, 
                         100, 
                         info.width, 
                         info.height, 
                         Consolas_20ptBitmaps + info.offset, 
-                        LCD_COLOR_WHITE, 
-                        LCD_COLOR_BLACK, 
+                        Dark_Mode ? LCD_COLOR_WHITE : LCD_COLOR_BLACK, 
+                        Dark_Mode ? LCD_COLOR_BLACK : LCD_COLOR_WHITE, 
                         false
                     );
 
@@ -192,6 +197,12 @@ void task_lcd(void *pvParameters)
                     width += info.width;
                 }
 
+                status = true;
+                break;
+
+            case LCD_CMD_UPDATE_THEME:
+                // Repaint the entire screen background for the new theme
+                lcd_clear_screen(Dark_Mode ? LCD_COLOR_BLACK : LCD_COLOR_WHITE);
                 status = true;
                 break;
 

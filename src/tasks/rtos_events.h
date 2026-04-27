@@ -30,6 +30,8 @@ extern EventGroupHandle_t ECE353_RTOS_Events;
 #define ECE353_RTOS_EVENTS_IPC_ACK_RECEIVED    ( 1 << 3 ) // Event 4
 #define ECE353_RTOS_EVENTS_IPC_NUM_RECEIVED    ( 1 << 4 ) // Event 5
 
+#define ECE353_THEME_CHANGED                   ( 1 << 5 ) // Event 6: ambient light mode changed
+
 #endif // ECE353_FREERTOS
 
 #endif // __RTOS_EVENTS_H__

@@ -20,6 +20,7 @@
 #include "task_eeprom.h"
 #include "task_cap_touch.h"
 #include "task_console.h"
+#include "task_light_sensor.h"
 
 #define  TASK_SYSTEM_CONTROL_STACK_SIZE    (configMINIMAL_STACK_SIZE*5)
 #define  TASK_SYSTEM_CONTROL_PRIORITY      (tskIDLE_PRIORITY + 1U)  
@@ -28,6 +29,10 @@
 /* Function Definitions                                                      */
 /*****************************************************************************/
 void task_hw05_system_control(void *pvParameters);
+
+/* Global dark-mode flag: true = dark background, false = light background.
+ * Updated by the ambient-light monitoring task in hw05.c. */
+extern volatile bool Dark_Mode;
 
 
  #endif
